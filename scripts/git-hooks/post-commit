@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Purpose:
+#   Auto-push every commit so GitHub stays current as you learn/build.
+# Disable:
+#   export WILSONLAB_NO_AUTOPUSH=1
+if [[ "${WILSONLAB_NO_AUTOPUSH:-0}" == "1" ]]; then
+  exit 0
+fi
+
+git push || true
