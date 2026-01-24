@@ -4,3 +4,8 @@
  */
 export const BUILD_SHA = (import.meta.env.VITE_BUILD_SHA || "dev").slice(0, 7);
 export const BUILD_TIME_UTC = import.meta.env.VITE_BUILD_TIME_UTC || "dev";
+
+export const BUILD_LABEL =
+  BUILD_TIME_UTC === "dev"
+    ? `${BUILD_SHA} • dev`
+    : `${BUILD_SHA} • ${BUILD_TIME_UTC}`;

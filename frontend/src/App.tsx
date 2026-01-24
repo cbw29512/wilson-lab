@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import "./app.css";
-import { BUILD_SHA, BUILD_TIME_UTC } from "./buildInfo";
+import { BUILD_SHA, BUILD_LABEL } from "./buildInfo";
 
 type ResourceType = "container" | "vm";
 type ResourceStatus = "running" | "stopped" | "planned" | "error" | "unknown";
@@ -34,6 +34,36 @@ function uniq<T>(arr: T[]): T[] {
 }
 
 export default function App() {
+  // WILSONLAB_AUTO_REFRESH_V1
+  useEffect(() => {
+    let stopped = false;
+
+    const check = async () => {
+      try {
+        const base = (import.meta as any).env?.BASE_URL || "/";
+        const url = `${base}version.json?v=${Date.now()}`;
+        const r = await fetch(url, { cache: "no-store" });
+        if (!r.ok) return;
+        const j = await r.json();
+        const live = String(j.sha || "").slice(0, 7);
+        if (live && live !== BUILD_SHA) {
+          // New deploy detected -> hard refresh
+          if (!stopped) window.location.reload();
+        }
+      } catch (_e) {
+        // ignore
+      }
+    };
+
+    // check now + every 30s
+    check();
+    const id = window.setInterval(check, 30_000);
+    return () => {
+      stopped = true;
+      window.clearInterval(id);
+    };
+  }, []);
+
   const [resources, setResources] = useState<Resource[]>([]);
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<string>("all");
@@ -114,12 +144,7 @@ export default function App() {
             <span className="pill">UTC</span>
             <span className="muted">{filtered.length} resources</span>
           </div>
-          <div className="meta-right muted">v1 mock inventory (M1) → real API inventory (M2)
-          {/* WILSONLAB_BUILD_STAMP */}
-          <span className="mono" title="Git commit">{BUILD_SHA}</span>
-          <span className="mono" title="Build time (UTC)">{BUILD_TIME_UTC}</span>
-
-        </div>
+          <div className="meta-right muted">v1 mock inventory (M1) → real API inventory (M2) <span className="mono"> • {BUILD_LABEL}</span></div>
         </div>
 
         <div className="grid">
