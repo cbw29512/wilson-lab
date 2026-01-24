@@ -42,21 +42,13 @@ jobs:
           VITE_BUILD_TIME_UTC: ${{ github.run_started_at }}
         run: npm run build
 
-
-      - name: SPA fallback (404.html) + disable Jekyll
-        working-directory: frontend
+      - name: Sanity check dist output (must contain index.html)
         run: |
-          test -f dist/index.html
-          cp dist/index.html dist/404.html
-          touch dist/.nojekyll
-      - name: Verify dist output + SPA helpers
-        working-directory: frontend
-        run: |
-          echo "== dist contents =="
-          ls -la dist || true
-          test -f dist/index.html
-          touch dist/.nojekyll
-          cp -f dist/index.html dist/404.html
+          ls -la frontend/dist
+          test -f frontend/dist/index.html
+          # SPA-friendly refresh support
+          cp frontend/dist/index.html frontend/dist/404.html
+          touch frontend/dist/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
