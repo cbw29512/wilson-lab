@@ -22,9 +22,3 @@ Rule: every milestone ends with:
 - Verification evidence:
   - GitHub SSH test returned: "You've successfully authenticated"
   - Push created `main -> main` and set upstream tracking.
-
-### M1 — React UI dashboard (mock inventory)
-- Added React + TypeScript frontend dashboard that renders lab resources as cards.
-- Includes search, tag filter, and sort controls.
-- Displays UTC timestamps and brief descriptions for interview-quality presentation.
-- Verified: `npm run build` succeeds.
