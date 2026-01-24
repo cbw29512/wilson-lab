@@ -70,7 +70,11 @@ export default function App() {
   const [sort, setSort] = useState<"recent" | "name">("recent");
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}mock/resources.json`)
+    const mockUrl = `${import.meta.env.BASE_URL}mock/resources.json`;
+    const apiUrl = "/api/v1/inventory";
+    fetch(apiUrl, { cache: "no-store" })
+      .then((r) => (r.ok ? r : Promise.reject(new Error(`api ${r.status}`))))
+      .catch(() => fetch(mockUrl, { cache: "no-store" }))
       .then((r) => r.json())
       .then((data) => setResources(data))
       .catch(() => setResources([]));
