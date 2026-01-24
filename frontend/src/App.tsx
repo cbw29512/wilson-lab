@@ -5,6 +5,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import "./app.css";
+import { BUILD_SHA, BUILD_TIME_UTC } from "./buildInfo";
 
 type ResourceType = "container" | "vm";
 type ResourceStatus = "running" | "stopped" | "planned" | "error" | "unknown";
