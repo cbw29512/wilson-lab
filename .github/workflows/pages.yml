@@ -42,6 +42,15 @@ jobs:
           VITE_BUILD_TIME_UTC: ${{ github.run_started_at }}
         run: npm run build
 
+      - name: Verify dist output + SPA helpers
+        working-directory: frontend
+        run: |
+          echo "== dist contents =="
+          ls -la dist || true
+          test -f dist/index.html
+          touch dist/.nojekyll
+          cp -f dist/index.html dist/404.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
