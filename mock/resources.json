@@ -1,0 +1,42 @@
+[
+  {
+    "id": "ng-grafana",
+    "name": "Grafana",
+    "type": "container",
+    "status": "running",
+    "description": "Dashboards for time-series security and traffic data. Frontend visualization layer.",
+    "tags": ["observability", "dashboards", "netguard"],
+    "created_utc": "2026-01-24T16:00:00Z",
+    "updated_utc": "2026-01-24T16:00:00Z"
+  },
+  {
+    "id": "ng-influxdb",
+    "name": "InfluxDB",
+    "type": "container",
+    "status": "running",
+    "description": "Time-series database storing network telemetry and security signals for analysis.",
+    "tags": ["database", "timeseries", "netguard"],
+    "created_utc": "2026-01-24T16:00:00Z",
+    "updated_utc": "2026-01-24T16:00:00Z"
+  },
+  {
+    "id": "lab-juiceshop",
+    "name": "OWASP Juice Shop",
+    "type": "container",
+    "status": "stopped",
+    "description": "Deliberately vulnerable web app used for training and security testing practice.",
+    "tags": ["training", "web", "owasp"],
+    "created_utc": "2026-01-24T16:00:00Z",
+    "updated_utc": "2026-01-24T16:00:00Z"
+  },
+  {
+    "id": "lab-kali",
+    "name": "Kali (planned)",
+    "type": "vm",
+    "status": "planned",
+    "description": "Security tooling VM for practice. In v1 we track it; later we’ll provision it via templates.",
+    "tags": ["kali", "vm", "training"],
+    "created_utc": "2026-01-24T16:00:00Z",
+    "updated_utc": "2026-01-24T16:00:00Z"
+  }
+]
