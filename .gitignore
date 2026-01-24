@@ -24,3 +24,6 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local timestamped backups (keep out of git)
+*.bak_*
