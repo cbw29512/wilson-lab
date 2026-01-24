@@ -114,7 +114,12 @@ export default function App() {
             <span className="pill">UTC</span>
             <span className="muted">{filtered.length} resources</span>
           </div>
-          <div className="meta-right muted">v1 mock inventory (M1) → real API inventory (M2)</div>
+          <div className="meta-right muted">v1 mock inventory (M1) → real API inventory (M2)
+          {/* WILSONLAB_BUILD_STAMP */}
+          <span className="mono" title="Git commit">{BUILD_SHA}</span>
+          <span className="mono" title="Build time (UTC)">{BUILD_TIME_UTC}</span>
+
+        </div>
         </div>
 
         <div className="grid">
