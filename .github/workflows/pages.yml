@@ -51,13 +51,13 @@ jobs:
         env:
           VITE_BUILD_SHA: ${{ github.sha }}
           VITE_BUILD_TIME_UTC: ${{ github.run_started_at }}
+          VITE_API_ORIGIN: ${{ vars.VITE_API_ORIGIN }}
         run: npm run build
 
-      - name: Sanity check dist output (must contain index.html)
+      - name: Sanity check dist output
         run: |
           ls -la frontend/dist
           test -f frontend/dist/index.html
-          # SPA-friendly refresh support
           cp frontend/dist/index.html frontend/dist/404.html
           touch frontend/dist/.nojekyll
 
