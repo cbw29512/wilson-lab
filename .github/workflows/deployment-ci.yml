@@ -1,0 +1,62 @@
+name: Deployment CI
+
+on:
+  pull_request:
+    paths:
+      - "deploy/**"
+      - "backend/Dockerfile"
+      - "backend/app/config.py"
+      - ".github/workflows/deployment-ci.yml"
+      - ".github/workflows/pages.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "deploy/**"
+      - "backend/Dockerfile"
+      - "backend/app/config.py"
+      - ".github/workflows/deployment-ci.yml"
+      - ".github/workflows/pages.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Create CI-only deployment inputs
+        run: |
+          mkdir -p deploy/secrets
+          printf '%064d' 0 > deploy/secrets/jwt_secret
+          printf 'viewer-ci-password-12345' > deploy/secrets/viewer_password
+          printf 'admin-ci-password-678901' > deploy/secrets/admin_password
+          cp deploy/.env.example deploy/.env
+          sed -i 's/^API_DOMAIN=.*/API_DOMAIN=api.example.test/' deploy/.env
+          sed -i 's/^DOCKER_GID=.*/DOCKER_GID=999/' deploy/.env
+
+      - name: Validate shell syntax
+        run: bash -n deploy/scripts/*.sh
+
+      - name: Validate Compose model
+        working-directory: deploy
+        run: docker compose config --quiet
+
+      - name: Validate Caddy configuration
+        working-directory: deploy
+        run: |
+          docker run --rm \
+            -e API_DOMAIN=api.example.test \
+            -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.4-alpine \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+      - name: Build hardened API image
+        run: docker build --pull --tag wilson-lab-api-ci backend
+
+      - name: Verify non-root image identity
+        run: test "$(docker image inspect --format '{{.Config.User}}' wilson-lab-api-ci)" = "10001:10001"
