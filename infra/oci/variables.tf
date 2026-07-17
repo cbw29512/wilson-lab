@@ -1,11 +1,16 @@
 variable "oci_auth" {
-  description = "OCI provider authentication method. Use APIKey for a local OCI config profile."
+  description = "OCI provider authentication: APIKey locally or ResourcePrincipal in OCI Resource Manager."
   type        = string
   default     = "APIKey"
+
+  validation {
+    condition     = contains(["APIKey", "ResourcePrincipal", "SecurityToken"], var.oci_auth)
+    error_message = "oci_auth must be APIKey, ResourcePrincipal, or SecurityToken."
+  }
 }
 
 variable "oci_profile" {
-  description = "Profile name from ~/.oci/config."
+  description = "Profile name from ~/.oci/config for APIKey or SecurityToken authentication."
   type        = string
   default     = "DEFAULT"
 }
@@ -20,18 +25,25 @@ variable "compartment_ocid" {
   type        = string
 }
 
-variable "ssh_public_key_path" {
-  description = "Path to the public SSH key installed for the Ubuntu account."
+variable "ssh_public_key" {
+  description = "Public SSH key text. Recommended for OCI Resource Manager."
   type        = string
+  default     = ""
+}
+
+variable "ssh_public_key_path" {
+  description = "Local path to a public SSH key. Recommended for local Terraform."
+  type        = string
+  default     = ""
 }
 
 variable "ssh_allowed_cidr" {
-  description = "Single administrative public IP in CIDR form, such as 203.0.113.10/32."
+  description = "Single administrative public IPv4 address in /32 CIDR form."
   type        = string
 
   validation {
-    condition     = can(cidrhost(var.ssh_allowed_cidr, 0))
-    error_message = "ssh_allowed_cidr must be a valid CIDR block."
+    condition     = can(cidrhost(var.ssh_allowed_cidr, 0)) && can(regex("/32$", var.ssh_allowed_cidr))
+    error_message = "ssh_allowed_cidr must be a single IPv4 address ending in /32."
   }
 }
 
@@ -49,6 +61,11 @@ variable "availability_domain_index" {
   description = "Zero-based availability-domain index. Change this when Always Free capacity is unavailable."
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.availability_domain_index >= 0 && floor(var.availability_domain_index) == var.availability_domain_index
+    error_message = "availability_domain_index must be a non-negative whole number."
+  }
 }
 
 variable "instance_shape" {
