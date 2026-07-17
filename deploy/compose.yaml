@@ -1,0 +1,153 @@
+name: wilson-lab
+
+services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in deploy/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    init: true
+    environment:
+      WILSON_LAB_ENVIRONMENT: production
+      WILSON_LAB_DATABASE_URL: sqlite:////data/wilson_lab.db
+      WILSON_LAB_JWT_SECRET_FILE: /run/secrets/jwt_secret
+      WILSON_LAB_ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-30}
+      WILSON_LAB_RUNTIME_MODE: docker
+      WILSON_LAB_CORS_ORIGINS: '["https://cbw29512.github.io"]'
+      WILSON_LAB_MANAGED_LABEL: wilson-lab.managed=true
+      WILSON_LAB_SEED_DEMO_USERS: "true"
+      WILSON_LAB_VIEWER_USERNAME: ${VIEWER_USERNAME:-viewer}
+      WILSON_LAB_VIEWER_PASSWORD_FILE: /run/secrets/viewer_password
+      WILSON_LAB_ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      WILSON_LAB_ADMIN_PASSWORD_FILE: /run/secrets/admin_password
+    secrets:
+      - jwt_secret
+      - viewer_password
+      - admin_password
+    group_add:
+      - ${DOCKER_GID:?Set DOCKER_GID in deploy/.env}
+    expose:
+      - "8055"
+    volumes:
+      - api_data:/data
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+    networks:
+      - edge
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 512m
+    cpus: 1.0
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8055/health', timeout=3)"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  demo-web:
+    image: nginx:1.29.8-alpine
+    restart: unless-stopped
+    labels:
+      wilson-lab.managed: "true"
+      wilson-lab.description: "Isolated demonstration web service managed through Wilson Lab."
+      wilson-lab.tags: "web,nginx,demo"
+      wilson-lab.environment: "cloud-sandbox"
+      wilson-lab.host: "wilson-lab-cloud"
+    networks:
+      - lab
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:mode=0755,uid=101,gid=101
+      - /var/run:mode=0755,uid=101,gid=101
+      - /tmp:mode=1777
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  demo-cache:
+    image: redis:8.2.7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    labels:
+      wilson-lab.managed: "true"
+      wilson-lab.description: "Ephemeral cache used to demonstrate safe state transitions."
+      wilson-lab.tags: "cache,redis,demo"
+      wilson-lab.environment: "cloud-sandbox"
+      wilson-lab.host: "wilson-lab-cloud"
+    networks:
+      - lab
+    read_only: true
+    tmpfs:
+      - /data:mode=0700,uid=999,gid=999
+      - /tmp:mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  edge:
+  lab:
+    internal: true
+
+volumes:
+  api_data:
+  caddy_data:
+  caddy_config:
+
+secrets:
+  jwt_secret:
+    file: ./secrets/jwt_secret
+  viewer_password:
+    file: ./secrets/viewer_password
+  admin_password:
+    file: ./secrets/admin_password
