@@ -1,6 +1,6 @@
 # Wilson Lab
 
-A security-conscious infrastructure control-plane showcase built to demonstrate product thinking, technical discovery, API design, authorization, operational safety, and clear communication.
+A security-conscious infrastructure control-plane showcase built to demonstrate product thinking, technical discovery, API design, authorization, operational safety, infrastructure as code, and clear communication.
 
 **Live dashboard:** https://cbw29512.github.io/wilson-lab/
 
@@ -21,7 +21,8 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 - Automatic HTTPS deployment through Caddy
 - File-backed production secrets
 - Backup and integrity-checked restore workflows
-- Automated frontend, backend, and deployment CI
+- Terraform-managed Oracle Cloud network and compute resources
+- Automated frontend, backend, deployment, and infrastructure CI
 
 ## Current milestone
 
@@ -31,8 +32,9 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 | M1 — Dashboard | Complete | Resource cards, search, filters, sorting, UTC timestamps |
 | M2 — Secure API foundation | Complete | Auth, RBAC, inventory, operations, audit trail, tests |
 | M3 — Frontend/API integration | Complete | Login, live-data state, role-aware controls, confirmation, details, audit panel |
-| M4 — Cloud deployment bundle | Complete in PR #3 | Caddy HTTPS, hardened Compose stack, secrets, backups, preflight, deployment CI |
-| M5 — Live cloud activation | External step | Provision VM and DNS, set repository API variable, verify public demo |
+| M4 — Cloud deployment bundle | Complete | Caddy HTTPS, hardened Compose stack, secrets, backups, preflight, deployment CI |
+| M5 — OCI infrastructure as code | Complete in PR #4 | VCN, firewall, A1 VM, Ubuntu image selection, cloud-init, Resource Manager runbook |
+| M6 — Live activation | External step | Activate OCI account, apply stack, create DNS record, connect Pages to API |
 
 ## Architecture
 
@@ -40,11 +42,13 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 flowchart LR
     Recruiter[Recruiter browser] -->|HTTPS| UI[React dashboard\nGitHub Pages]
     UI -->|JWT API requests| Proxy[Caddy\nAutomatic HTTPS]
-    Proxy --> API[FastAPI control plane\nDedicated sandbox VM]
+    Proxy --> API[FastAPI control plane\nDedicated OCI VM]
     API --> DB[(SQLite audit volume)]
     API --> Guard[RBAC + confirmation\nmanaged-label allowlist]
     Guard --> Runtime[Docker socket\nVM-local only]
     Runtime --> Containers[Isolated labeled\ndemo containers]
+    IaC[Terraform / OCI Resource Manager] --> Cloud[VCN + subnet + firewall\nA1 Flex Ubuntu VM]
+    Cloud --> Proxy
 ```
 
 The Docker adapter only sees containers labeled `wilson-lab.managed=true`. It exposes no shell execution, container creation, deletion, image pulling, or arbitrary Docker commands. The Docker-backed stack belongs only on a dedicated disposable VM.
@@ -97,18 +101,23 @@ The Vite development server proxies `/api` and `/health` to `http://127.0.0.1:80
 
 ## Cloud deployment
 
-The provider-neutral deployment package is under [`deploy/`](deploy/README.md). It includes:
+Two versioned layers make activation repeatable:
 
-- Caddy with automatic HTTPS
-- a non-root, read-only API container
-- persistent audit and certificate volumes
-- file-mounted random secrets
-- two internal demonstration containers
-- no public API, Redis, nginx, or Docker-daemon ports
-- preflight, backup, restore, and credential-display scripts
-- deployment configuration CI
+1. [`infra/oci/`](infra/oci/README.md) provisions the Oracle Cloud VCN, subnet, firewall, public IP, and Ubuntu A1 Flex instance through Terraform or OCI Resource Manager.
+2. [`deploy/`](deploy/README.md) installs Caddy, the API, persistent data, secrets, backups, and isolated demonstration containers on that VM.
 
-Actual activation still requires a cloud account, a dedicated Ubuntu VM, and a DNS name.
+The OCI Terraform module includes:
+
+- Resource Manager and local API-key authentication modes
+- dynamically selected Canonical Ubuntu ARM image
+- SSH limited to one `/32` administrator address
+- public web ingress limited to ports 80 and 443
+- a 1 OCPU / 6 GB / 50 GB default configuration
+- cloud-init that installs Docker and starts Wilson Lab
+- Terraform formatting and validation CI
+- a packaged Resource Manager artifact
+
+Actual activation still requires an OCI account and a DNS name controlled by the user.
 
 ## Validate
 
@@ -121,11 +130,13 @@ cd ../backend
 pip install -e ".[test]"
 pytest
 
-cd ../deploy
-cp .env.example .env
-# Add CI-safe placeholder secret files before running configuration validation.
-docker compose config --quiet
+cd ../infra/oci
+terraform fmt -check
+terraform init -backend=false
+terraform validate
 ```
+
+Deployment CI separately validates the Compose stack, Caddyfile, shell scripts, hardened API image, and non-root container identity.
 
 ## Security model
 
@@ -137,9 +148,10 @@ Wilson Lab is intentionally narrow:
 - Every success and failure produces an audit record.
 - Docker resources are checked against the management label before use.
 - Production startup rejects weak, default, duplicate, missing, or unreadable secrets.
+- OCI security rules expose SSH only to a supplied `/32` and web traffic only on 80/443.
 - The Docker-backed mode belongs on a dedicated cloud sandbox, never a home or production host.
 
-See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model, [`backend/README.md`](backend/README.md) for API setup, and [`deploy/README.md`](deploy/README.md) for cloud operations.
+See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model, [`backend/README.md`](backend/README.md) for API setup, [`deploy/README.md`](deploy/README.md) for cloud operations, and [`infra/oci/README.md`](infra/oci/README.md) for Oracle activation.
 
 ## Documentation
 
@@ -149,3 +161,4 @@ See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model, [`backend/READM
 - [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) — interview demonstration flow
 - [`backend/README.md`](backend/README.md) — API endpoints and local setup
 - [`deploy/README.md`](deploy/README.md) — cloud deployment and recovery runbook
+- [`infra/oci/README.md`](infra/oci/README.md) — Oracle Resource Manager and Terraform activation
