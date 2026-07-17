@@ -3,7 +3,12 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from app.config import Settings
+from app.config import (
+    DEFAULT_ADMIN_PASSWORD,
+    DEFAULT_JWT_SECRET,
+    DEFAULT_VIEWER_PASSWORD,
+    Settings,
+)
 
 
 def write_secret(path: Path, value: str) -> str:
@@ -27,7 +32,13 @@ def test_production_settings_load_secrets_from_files(tmp_path: Path):
 
 def test_production_rejects_default_secrets():
     with pytest.raises(ValidationError, match="Production JWT secret"):
-        Settings(_env_file=None, environment="production")
+        Settings(
+            _env_file=None,
+            environment="production",
+            jwt_secret=DEFAULT_JWT_SECRET,
+            viewer_password=DEFAULT_VIEWER_PASSWORD,
+            admin_password=DEFAULT_ADMIN_PASSWORD,
+        )
 
 
 def test_production_rejects_duplicate_demo_passwords(tmp_path: Path):
