@@ -4,11 +4,11 @@ import { parseAuditEvents, parseResource, parseResources, parseUser } from "./va
 const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || "").trim().replace(/\/$/, "");
 
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number,
-  ) {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
     super(message);
+    this.status = status;
   }
 }
 
