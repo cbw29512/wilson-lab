@@ -1,0 +1,57 @@
+name: Infrastructure CI
+
+on:
+  pull_request:
+    paths:
+      - "infra/oci/**"
+      - ".github/workflows/infra-ci.yml"
+      - ".gitignore"
+  push:
+    branches:
+      - main
+    paths:
+      - "infra/oci/**"
+      - ".github/workflows/infra-ci.yml"
+      - ".gitignore"
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive infra/oci
+
+      - name: Initialize providers without a backend
+        working-directory: infra/oci
+        run: terraform init -backend=false -input=false
+
+      - name: Validate OCI module
+        working-directory: infra/oci
+        run: terraform validate
+
+      - name: Package Resource Manager configuration
+        run: |
+          mkdir -p artifacts
+          cd infra/oci
+          zip -r ../../artifacts/wilson-lab-oci.zip . \
+            -x '.terraform/*' '*.tfstate*' 'terraform.tfvars'
+
+      - name: Upload Resource Manager configuration
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilson-lab-oci
+          path: artifacts/wilson-lab-oci.zip
+          if-no-files-found: error
+          retention-days: 30
