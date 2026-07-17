@@ -150,14 +150,50 @@ Infrastructure code needs the same truthful boundaries as application code. The 
 
 ---
 
-## M5 — Live cloud activation (external step)
+## M5 — OCI infrastructure as code
+
+### What changed
+
+- Added a Terraform module for Oracle Cloud Infrastructure.
+- Added API-key and Resource Manager authentication modes.
+- Added a dedicated VCN, public subnet, internet gateway, route table, and security list.
+- Restricted SSH ingress to one supplied `/32` administrator address.
+- Limited public service ingress to TCP 80/443 and UDP 443.
+- Added an Always Free-compatible `VM.Standard.A1.Flex` instance configuration.
+- Added dynamic Canonical Ubuntu ARM image discovery.
+- Added cloud-init that installs Docker, clones Wilson Lab, generates secrets, and starts the deployment stack.
+- Added clear Terraform checks for SSH keys, Ubuntu image discovery, and availability-domain selection.
+- Added Terraform outputs for the public IP, API URL, SSH command, DNS instruction, and selected image.
+- Added a PowerShell-first Oracle Resource Manager activation runbook.
+- Added infrastructure CI for formatting, provider initialization, validation, and Resource Manager packaging.
+
+### Why
+
+Turn the remaining cloud provisioning work into versioned, reviewable infrastructure code rather than a fragile sequence of console clicks.
+
+### Verification
+
+- `terraform fmt -check -recursive` passes.
+- Terraform initializes the OCI provider without a local backend.
+- `terraform validate` passes without requiring cloud credentials.
+- CI packages the validated `infra/oci` configuration as a Resource Manager ZIP artifact.
+- Pull request: `Build M5 OCI infrastructure as code`.
+
+### What I learned
+
+Provider-neutral deployment and provider-specific provisioning belong in separate layers. Resource Manager can own OCI state while the Compose bundle remains portable and testable outside Oracle.
+
+---
+
+## M6 — Live cloud activation (external step)
 
 Remaining work:
 
-- provision a dedicated cloud VM
-- create the DNS record
-- run the deployment preflight and start the stack
-- verify HTTPS and container isolation
+- activate or sign in to the OCI Free Tier account
+- apply the Resource Manager stack in the OCI home region
+- create the DNS `A` record from the Terraform public-IP output
+- wait for cloud-init and Caddy HTTPS activation
+- verify the Docker inventory and role behavior
 - set the GitHub repository variable `VITE_API_ORIGIN`
-- rotate and securely store demonstration credentials
+- securely store demonstration credentials
 - capture final screenshots and a short demonstration recording
