@@ -1,0 +1,84 @@
+#cloud-config
+hostname: wilson-lab
+manage_etc_hosts: true
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - openssl
+
+write_files:
+  - path: /usr/local/sbin/bootstrap-wilson-lab
+    owner: root:root
+    permissions: "0750"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      export DEBIAN_FRONTEND=noninteractive
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+
+      . /etc/os-release
+      ARCH="$(dpkg --print-architecture)"
+      cat > /etc/apt/sources.list.d/docker.sources <<DOCKER_REPOSITORY
+      Types: deb
+      URIs: https://download.docker.com/linux/ubuntu
+      Suites: $VERSION_CODENAME
+      Components: stable
+      Architectures: $ARCH
+      Signed-By: /etc/apt/keyrings/docker.asc
+      DOCKER_REPOSITORY
+
+      apt-get update
+      apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      systemctl enable --now docker
+      usermod -aG docker ubuntu
+
+      rm -rf /opt/wilson-lab
+      git clone --depth 1 --branch "${repository_branch}" "${repository_url}" /opt/wilson-lab
+      chown -R ubuntu:ubuntu /opt/wilson-lab
+
+      DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+      cat > /opt/wilson-lab/deploy/.env <<DEPLOY_ENV
+      API_DOMAIN=${api_domain}
+      DOCKER_GID=$DOCKER_GID
+      VIEWER_USERNAME=viewer
+      ADMIN_USERNAME=admin
+      ACCESS_TOKEN_MINUTES=30
+      DEPLOY_ENV
+      chown ubuntu:ubuntu /opt/wilson-lab/deploy/.env
+      chmod 0600 /opt/wilson-lab/deploy/.env
+
+      cd /opt/wilson-lab
+      bash deploy/scripts/prepare-secrets.sh
+      cd deploy
+      docker compose pull
+      docker compose build --pull api
+      docker compose up -d
+
+      cat > /etc/systemd/system/wilson-lab-update.service <<'SERVICE'
+      [Unit]
+      Description=Update Wilson Lab deployment
+      Requires=docker.service
+      After=docker.service network-online.target
+
+      [Service]
+      Type=oneshot
+      WorkingDirectory=/opt/wilson-lab
+      ExecStart=/usr/bin/git pull --ff-only
+      ExecStart=/usr/bin/docker compose --project-directory deploy -f deploy/compose.yaml pull
+      ExecStart=/usr/bin/docker compose --project-directory deploy -f deploy/compose.yaml build --pull api
+      ExecStart=/usr/bin/docker compose --project-directory deploy -f deploy/compose.yaml up -d --remove-orphans
+      RemainAfterExit=no
+      SERVICE
+
+      systemctl daemon-reload
+
+runcmd:
+  - [bash, /usr/local/sbin/bootstrap-wilson-lab]
+
+final_message: "Wilson Lab bootstrap finished after $UPTIME seconds. Review /var/log/cloud-init-output.log."
