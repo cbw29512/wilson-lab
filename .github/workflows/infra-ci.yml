@@ -30,8 +30,25 @@ jobs:
         with:
           terraform_wrapper: false
 
+      - name: Create formatted preview
+        run: |
+          mkdir -p artifacts
+          cp -R infra/oci artifacts/oci-formatted
+          terraform fmt -recursive artifacts/oci-formatted
+          diff -ru infra/oci artifacts/oci-formatted > artifacts/terraform-format.diff || true
+
+      - name: Upload formatting preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-format-preview
+          path: |
+            artifacts/oci-formatted
+            artifacts/terraform-format.diff
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Check formatting
-        run: terraform fmt -check -recursive infra/oci
+        run: test ! -s artifacts/terraform-format.diff
 
       - name: Initialize providers without a backend
         working-directory: infra/oci
@@ -43,7 +60,6 @@ jobs:
 
       - name: Package Resource Manager configuration
         run: |
-          mkdir -p artifacts
           cd infra/oci
           zip -r ../../artifacts/wilson-lab-oci.zip . \
             -x '.terraform/*' '*.tfstate*' 'terraform.tfvars'
