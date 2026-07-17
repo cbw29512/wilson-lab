@@ -65,9 +65,14 @@ write_files:
       Description=Update Wilson Lab deployment
       Requires=docker.service
       After=docker.service network-online.target
+      Wants=network-online.target
 
       [Service]
       Type=oneshot
+      User=ubuntu
+      Group=ubuntu
+      SupplementaryGroups=docker
+      Environment=HOME=/home/ubuntu
       WorkingDirectory=/opt/wilson-lab
       ExecStart=/usr/bin/git pull --ff-only
       ExecStart=/usr/bin/docker compose --project-directory deploy -f deploy/compose.yaml pull
