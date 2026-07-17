@@ -4,39 +4,59 @@
     "name": "Grafana",
     "type": "container",
     "status": "running",
-    "description": "Dashboards for time-series security and traffic data. Frontend visualization layer.",
+    "description": "Dashboards for time-series security and traffic data in the isolated demonstration environment.",
     "tags": ["observability", "dashboards", "netguard"],
-    "created_utc": "2026-01-24T16:00:00Z",
-    "updated_utc": "2026-01-24T16:00:00Z"
+    "environment": "demo",
+    "host_name": "wilson-lab-sandbox",
+    "image_name": "grafana/grafana:latest",
+    "health_status": "healthy",
+    "allowed_actions": ["stop", "restart"],
+    "created_utc": "2026-07-01T14:00:00Z",
+    "updated_utc": "2026-07-17T20:00:00Z"
   },
   {
     "id": "ng-influxdb",
     "name": "InfluxDB",
     "type": "container",
     "status": "running",
-    "description": "Time-series database storing network telemetry and security signals for analysis.",
+    "description": "Time-series database storing simulated network telemetry and security signals.",
     "tags": ["database", "timeseries", "netguard"],
-    "created_utc": "2026-01-24T16:00:00Z",
-    "updated_utc": "2026-01-24T16:00:00Z"
+    "environment": "demo",
+    "host_name": "wilson-lab-sandbox",
+    "image_name": "influxdb:2",
+    "health_status": "healthy",
+    "allowed_actions": ["stop", "restart"],
+    "created_utc": "2026-07-01T14:05:00Z",
+    "updated_utc": "2026-07-17T19:58:00Z"
   },
   {
     "id": "lab-juiceshop",
     "name": "OWASP Juice Shop",
     "type": "container",
     "status": "stopped",
-    "description": "Deliberately vulnerable web app used for training and security testing practice.",
+    "description": "Deliberately vulnerable training application represented as an allowlisted sandbox resource.",
     "tags": ["training", "web", "owasp"],
-    "created_utc": "2026-01-24T16:00:00Z",
-    "updated_utc": "2026-01-24T16:00:00Z"
+    "environment": "demo",
+    "host_name": "wilson-lab-sandbox",
+    "image_name": "bkimminich/juice-shop:latest",
+    "health_status": null,
+    "allowed_actions": ["start"],
+    "created_utc": "2026-07-01T14:10:00Z",
+    "updated_utc": "2026-07-17T19:40:00Z"
   },
   {
     "id": "lab-kali",
-    "name": "Kali (planned)",
+    "name": "Kali VM",
     "type": "vm",
     "status": "planned",
-    "description": "Security tooling VM for practice. In v1 we track it; later we’ll provision it via templates.",
+    "description": "Planned security-tooling VM tracked for future template-based provisioning. No operations are currently exposed.",
     "tags": ["kali", "vm", "training"],
-    "created_utc": "2026-01-24T16:00:00Z",
-    "updated_utc": "2026-01-24T16:00:00Z"
+    "environment": "roadmap",
+    "host_name": "not-provisioned",
+    "image_name": null,
+    "health_status": null,
+    "allowed_actions": [],
+    "created_utc": "2026-07-01T14:15:00Z",
+    "updated_utc": "2026-07-17T18:30:00Z"
   }
 ]
