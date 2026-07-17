@@ -13,8 +13,35 @@ data "oci_core_images" "ubuntu" {
 }
 
 locals {
-  availability_domain = data.oci_identity_availability_domains.available.availability_domains[var.availability_domain_index].name
-  ubuntu_image_id      = data.oci_core_images.ubuntu.images[0].id
+  availability_domain = try(
+    data.oci_identity_availability_domains.available.availability_domains[var.availability_domain_index].name,
+    "",
+  )
+  ubuntu_image_id = try(data.oci_core_images.ubuntu.images[0].id, "")
+  ssh_authorized_keys = trimspace(
+    var.ssh_public_key != "" ? var.ssh_public_key : try(file(pathexpand(var.ssh_public_key_path)), "")
+  )
+}
+
+check "ssh_public_key_provided" {
+  assert {
+    condition     = local.ssh_authorized_keys != ""
+    error_message = "Set ssh_public_key for Resource Manager or ssh_public_key_path for local Terraform."
+  }
+}
+
+check "availability_domain_exists" {
+  assert {
+    condition     = local.availability_domain != ""
+    error_message = "availability_domain_index is outside the availability domains returned for this region."
+  }
+}
+
+check "ubuntu_image_exists" {
+  assert {
+    condition     = local.ubuntu_image_id != ""
+    error_message = "No matching Canonical Ubuntu image was found for the selected version and shape."
+  }
 }
 
 resource "oci_core_vcn" "wilson_lab" {
@@ -142,10 +169,10 @@ resource "oci_core_instance" "wilson_lab" {
   }
 
   metadata = {
-    ssh_authorized_keys = trimspace(file(pathexpand(var.ssh_public_key_path)))
+    ssh_authorized_keys = local.ssh_authorized_keys
     user_data = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
-      api_domain       = var.api_domain
-      repository_url   = var.repository_url
+      api_domain        = var.api_domain
+      repository_url    = var.repository_url
       repository_branch = var.repository_branch
     }))
   }
