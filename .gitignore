@@ -21,6 +21,16 @@ deploy/secrets/
 deploy/backups/
 deploy/.env
 
+# Terraform state and local inputs
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!**/terraform.tfvars.example
+.terraform.lock.hcl
+crash.log
+crash.*.log
+
 # Python
 __pycache__/
 *.pyc
