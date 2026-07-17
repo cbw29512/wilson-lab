@@ -18,8 +18,10 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 - SQLite-backed action requests and audit history
 - Mock and Docker runtime adapters
 - Frontend response validation and safe API fallback
-- Automated frontend and backend CI
-- Security documentation and repeatable setup instructions
+- Automatic HTTPS deployment through Caddy
+- File-backed production secrets
+- Backup and integrity-checked restore workflows
+- Automated frontend, backend, and deployment CI
 
 ## Current milestone
 
@@ -28,22 +30,24 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 | M0 — Repository foundation | Complete | Documentation, CI, Pages deployment, hooks |
 | M1 — Dashboard | Complete | Resource cards, search, filters, sorting, UTC timestamps |
 | M2 — Secure API foundation | Complete | Auth, RBAC, inventory, operations, audit trail, tests |
-| M3 — Frontend/API integration | Complete in PR #2 | Login, live-data state, role-aware controls, confirmation, details, audit panel |
-| M4 — Cloud sandbox | Next | Dedicated HTTPS-hosted demo containers and deployment runbook |
+| M3 — Frontend/API integration | Complete | Login, live-data state, role-aware controls, confirmation, details, audit panel |
+| M4 — Cloud deployment bundle | Complete in PR #3 | Caddy HTTPS, hardened Compose stack, secrets, backups, preflight, deployment CI |
+| M5 — Live cloud activation | External step | Provision VM and DNS, set repository API variable, verify public demo |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     Recruiter[Recruiter browser] -->|HTTPS| UI[React dashboard\nGitHub Pages]
-    UI -->|JWT API requests| API[FastAPI control plane\nDedicated sandbox VM]
-    API --> DB[(SQLite audit database)]
+    UI -->|JWT API requests| Proxy[Caddy\nAutomatic HTTPS]
+    Proxy --> API[FastAPI control plane\nDedicated sandbox VM]
+    API --> DB[(SQLite audit volume)]
     API --> Guard[RBAC + confirmation\nmanaged-label allowlist]
-    Guard --> Runtime[Mock or Docker runtime]
-    Runtime --> Containers[Dedicated demo containers]
+    Guard --> Runtime[Docker socket\nVM-local only]
+    Runtime --> Containers[Isolated labeled\ndemo containers]
 ```
 
-The Docker adapter only sees containers labeled `wilson-lab.managed=true`. It exposes no shell execution, container creation, deletion, image pulling, or arbitrary Docker commands.
+The Docker adapter only sees containers labeled `wilson-lab.managed=true`. It exposes no shell execution, container creation, deletion, image pulling, or arbitrary Docker commands. The Docker-backed stack belongs only on a dedicated disposable VM.
 
 ## Dashboard behavior
 
@@ -55,7 +59,7 @@ The Docker adapter only sees containers labeled `wilson-lab.managed=true`. It ex
 - Invalid or expired sessions are cleared and returned to demo mode.
 - The frontend contains no embedded credentials.
 
-## Quick start
+## Local quick start
 
 ### Backend
 
@@ -91,7 +95,20 @@ npm run dev
 
 The Vite development server proxies `/api` and `/health` to `http://127.0.0.1:8055`.
 
-For a hosted frontend build, set `VITE_API_ORIGIN` to the HTTPS origin of the isolated API before running `npm run build`. Leave it blank to keep the deployed dashboard in demo mode.
+## Cloud deployment
+
+The provider-neutral deployment package is under [`deploy/`](deploy/README.md). It includes:
+
+- Caddy with automatic HTTPS
+- a non-root, read-only API container
+- persistent audit and certificate volumes
+- file-mounted random secrets
+- two internal demonstration containers
+- no public API, Redis, nginx, or Docker-daemon ports
+- preflight, backup, restore, and credential-display scripts
+- deployment configuration CI
+
+Actual activation still requires a cloud account, a dedicated Ubuntu VM, and a DNS name.
 
 ## Validate
 
@@ -103,6 +120,11 @@ npm run check
 cd ../backend
 pip install -e ".[test]"
 pytest
+
+cd ../deploy
+cp .env.example .env
+# Add CI-safe placeholder secret files before running configuration validation.
+docker compose config --quiet
 ```
 
 ## Security model
@@ -114,9 +136,10 @@ Wilson Lab is intentionally narrow:
 - Every state-changing request requires explicit confirmation.
 - Every success and failure produces an audit record.
 - Docker resources are checked against the management label before use.
+- Production startup rejects weak, default, duplicate, missing, or unreadable secrets.
 - The Docker-backed mode belongs on a dedicated cloud sandbox, never a home or production host.
 
-See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model and [`backend/README.md`](backend/README.md) for API setup.
+See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model, [`backend/README.md`](backend/README.md) for API setup, and [`deploy/README.md`](deploy/README.md) for cloud operations.
 
 ## Documentation
 
@@ -125,3 +148,4 @@ See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model and [`backend/RE
 - [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md) — chronological engineering record
 - [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) — interview demonstration flow
 - [`backend/README.md`](backend/README.md) — API endpoints and local setup
+- [`deploy/README.md`](deploy/README.md) — cloud deployment and recovery runbook

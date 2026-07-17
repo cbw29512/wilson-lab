@@ -11,9 +11,15 @@ yarn-error.log*
 # Env/secrets (NEVER commit)
 .env
 .env.*
+!**/.env.example
 secrets/
+deploy/secrets/
 *.key
 *.pem
+
+# Deployment state
+deploy/backups/
+deploy/.env
 
 # Python
 __pycache__/

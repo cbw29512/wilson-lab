@@ -63,6 +63,8 @@ Tests verify:
 - valid state transitions
 - rejected invalid transitions
 - success and failure audit records
+- production rejection of default or duplicate credentials
+- file-backed secret loading
 
 ## API endpoints
 
@@ -100,15 +102,28 @@ docker run -d \
 
 Do not expose an unauthenticated Docker TCP socket. For the first cloud demonstration, run the API on the same dedicated VM and allow its service account to access the local Unix socket. Treat that account as privileged and keep the VM isolated from personal and production systems.
 
+## File-backed production secrets
+
+Wilson Lab accepts either direct values or file paths:
+
+| Direct setting | File alternative |
+|---|---|
+| `WILSON_LAB_JWT_SECRET` | `WILSON_LAB_JWT_SECRET_FILE` |
+| `WILSON_LAB_VIEWER_PASSWORD` | `WILSON_LAB_VIEWER_PASSWORD_FILE` |
+| `WILSON_LAB_ADMIN_PASSWORD` | `WILSON_LAB_ADMIN_PASSWORD_FILE` |
+
+When a file setting is present, its trimmed contents replace the direct value. Production startup fails when secrets are missing, unreadable, empty, too short, duplicated, or left at development defaults.
+
+The provider-neutral Compose deployment uses files mounted under `/run/secrets/`. See [`../deploy/README.md`](../deploy/README.md).
+
 ## Production checklist
 
-- Generate a long random `WILSON_LAB_JWT_SECRET`.
-- Replace both demo passwords.
+- Use file-backed random secrets.
 - Set `WILSON_LAB_ENVIRONMENT=production`.
 - Set CORS to the exact GitHub Pages origin.
 - Put the API behind HTTPS.
 - Restrict inbound traffic to required ports.
 - Use a dedicated sandbox VM.
 - Label only demonstration containers.
-- Back up or rotate the audit database as appropriate.
+- Back up the audit database.
 - Never mount home or production directories into demonstration containers.
