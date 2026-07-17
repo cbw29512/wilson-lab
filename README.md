@@ -8,13 +8,16 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 
 - A modern React 19 and TypeScript dashboard
 - Searchable and filterable infrastructure inventory
-- A FastAPI control-plane API
-- Signed JWT authentication
+- Clear live-versus-demo data state
+- FastAPI control-plane API integration
+- Signed JWT authentication with session-scoped browser storage
 - Viewer and Administrator roles
+- Role-aware resource controls and details
 - Explicit confirmation before state-changing operations
 - Allowlisted start, stop, and restart actions
 - SQLite-backed action requests and audit history
 - Mock and Docker runtime adapters
+- Frontend response validation and safe API fallback
 - Automated frontend and backend CI
 - Security documentation and repeatable setup instructions
 
@@ -24,9 +27,9 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 |---|---|---|
 | M0 — Repository foundation | Complete | Documentation, CI, Pages deployment, hooks |
 | M1 — Dashboard | Complete | Resource cards, search, filters, sorting, UTC timestamps |
-| M2 — Secure API foundation | Complete in PR #1 | Auth, RBAC, inventory, operations, audit trail, tests |
-| M3 — Frontend/API integration | Next | Login, live-data indicator, role-aware controls, audit panel |
-| M4 — Cloud sandbox | Planned | Dedicated HTTPS-hosted demo containers and deployment runbook |
+| M2 — Secure API foundation | Complete | Auth, RBAC, inventory, operations, audit trail, tests |
+| M3 — Frontend/API integration | Complete in PR #2 | Login, live-data state, role-aware controls, confirmation, details, audit panel |
+| M4 — Cloud sandbox | Next | Dedicated HTTPS-hosted demo containers and deployment runbook |
 
 ## Architecture
 
@@ -42,15 +45,17 @@ flowchart LR
 
 The Docker adapter only sees containers labeled `wilson-lab.managed=true`. It exposes no shell execution, container creation, deletion, image pulling, or arbitrary Docker commands.
 
+## Dashboard behavior
+
+- The public GitHub Pages site always remains useful with validated demo inventory.
+- When an API is reachable, the dashboard offers Viewer or Administrator sign-in.
+- A valid session switches the inventory source to live data.
+- Viewer accounts remain read-only.
+- Administrator actions require explicit confirmation and refresh the audit timeline.
+- Invalid or expired sessions are cleared and returned to demo mode.
+- The frontend contains no embedded credentials.
+
 ## Quick start
-
-### Frontend
-
-```bash
-cd frontend
-npm ci
-npm run dev
-```
 
 ### Backend
 
@@ -74,14 +79,26 @@ Copy-Item .env.example .env
 uvicorn app.main:app --reload --port 8055
 ```
 
-The Vite development server proxies `/api` to `http://127.0.0.1:8055`.
+### Frontend
+
+Open a second terminal:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+The Vite development server proxies `/api` and `/health` to `http://127.0.0.1:8055`.
+
+For a hosted frontend build, set `VITE_API_ORIGIN` to the HTTPS origin of the isolated API before running `npm run build`. Leave it blank to keep the deployed dashboard in demo mode.
 
 ## Validate
 
 ```bash
 cd frontend
 npm ci
-npm run build
+npm run check
 
 cd ../backend
 pip install -e ".[test]"

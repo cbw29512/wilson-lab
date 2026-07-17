@@ -1,0 +1,35 @@
+@media (max-width: 1080px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-toolbar { grid-template-columns: 1fr; align-items: stretch; }
+  .controls { justify-content: flex-start; }
+  .audit-button { width: fit-content; }
+}
+
+@media (max-width: 760px) {
+  .topbar { position: static; align-items: flex-start; flex-direction: column; }
+  .header-status { justify-content: flex-start; }
+  .content { width: min(var(--content), calc(100% - 28px)); padding-top: 20px; }
+  .login-panel { grid-template-columns: 1fr; gap: 24px; padding: 24px; }
+  .grid { grid-template-columns: 1fr; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; }
+  .search-field { grid-column: 1 / -1; }
+  .select { width: 100%; min-width: 0; }
+  .drawer { padding: 22px; }
+}
+
+@media (max-width: 480px) {
+  .controls { grid-template-columns: 1fr; }
+  .search-field { grid-column: auto; }
+  .header-status .build-label { display: none; }
+  .actions .btn,
+  .panel-actions .btn,
+  .dialog-actions .btn { flex: 1 1 100%; }
+  .detail-list div { grid-template-columns: 1fr; gap: 4px; }
+  .confirmation-summary { grid-template-columns: 1fr; }
+  .confirmation-summary span { padding-bottom: 3px; border-bottom: 0; }
+  .confirmation-summary strong { padding-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}

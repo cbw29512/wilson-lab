@@ -1,0 +1,110 @@
+.login-panel,
+.card,
+.notice,
+.empty {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(150deg, rgba(87, 214, 255, 0.045), transparent 40%), var(--panel-soft);
+  box-shadow: var(--shadow);
+}
+
+.login-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  gap: 42px;
+  padding: 34px;
+}
+
+.login-panel h1 { max-width: 700px; margin: 8px 0 14px; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1; }
+.login-panel p { color: var(--muted); line-height: 1.65; }
+.login-form { display: grid; gap: 14px; }
+.login-form label { display: grid; gap: 7px; color: var(--muted); font-size: 0.8rem; font-weight: 800; }
+
+.search,
+.select,
+.login-form input {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(7, 11, 18, 0.72);
+  color: var(--text);
+  padding: 0 13px;
+  font: inherit;
+}
+
+.search { width: 100%; }
+.select { min-width: 145px; }
+.search:focus,
+.select:focus,
+.login-form input:focus { outline: 3px solid rgba(87, 214, 255, 0.24); border-color: var(--accent); }
+
+.btn,
+.icon-button {
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.btn { min-height: 42px; padding: 0 14px; border-radius: 999px; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--accent); }
+.btn:disabled { cursor: not-allowed; opacity: 0.5; }
+.btn-primary { border-color: rgba(87, 214, 255, 0.35); background: linear-gradient(135deg, var(--accent-strong), var(--accent)); color: #04111b; }
+.btn-danger { border-color: rgba(255, 113, 133, 0.5); background: rgba(255, 113, 133, 0.13); color: #ffd7dd; }
+.btn-compact { min-height: 36px; padding-inline: 12px; font-size: 0.82rem; }
+
+.status-pill,
+.user-pill,
+.pill,
+.count-badge,
+.badge,
+.tag {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.status-pill,
+.user-pill,
+.pill { padding: 7px 10px; font-size: 0.74rem; font-weight: 850; }
+.status-available,
+.source-live { border-color: rgba(97, 233, 166, 0.32); color: #aff8d3; background: rgba(97, 233, 166, 0.07); }
+.status-unavailable,
+.source-demo { border-color: rgba(249, 200, 91, 0.3); color: #ffe2a0; background: rgba(249, 200, 91, 0.07); }
+.status-checking { color: var(--muted); }
+.user-pill { color: var(--accent); }
+.build-label { color: var(--subtle); font-size: 0.72rem; }
+
+.notice { margin-bottom: 20px; padding: 14px 18px; }
+.notice-success { border-color: rgba(97, 233, 166, 0.35); color: #c9ffe5; }
+.notice-error { border-color: rgba(255, 113, 133, 0.4); color: #ffd2d9; }
+.notice-info { color: #cfe8ff; }
+
+.card { display: flex; min-height: 330px; flex-direction: column; gap: 15px; padding: 20px; }
+.card-title { margin: 0; font-size: 1.15rem; }
+.card-subtitle,
+.tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+.badge,
+.tag { padding: 5px 8px; font-size: 0.69rem; font-weight: 800; }
+.badge-running { color: #aff8d3; border-color: rgba(97, 233, 166, 0.3); }
+.badge-stopped { color: #ffe2a0; border-color: rgba(249, 200, 91, 0.3); }
+.badge-error { color: #ffd2d9; border-color: rgba(255, 113, 133, 0.35); }
+.badge-container { color: var(--accent); }
+.desc { margin: 0; color: #d1dcef; line-height: 1.55; }
+.resource-facts { display: grid; gap: 8px; margin: 0; padding-top: 12px; border-top: 1px solid var(--border); }
+.resource-facts div { display: flex; justify-content: space-between; gap: 14px; }
+.resource-facts dt { color: var(--muted); }
+.resource-facts dd { margin: 0; text-align: right; }
+.actions { margin-top: auto; flex-wrap: wrap; }
+.role-note { color: var(--subtle); font-size: 0.78rem; }
+.empty { padding: 34px; text-align: center; }
+.empty p { color: var(--muted); }
+.form-help { margin: 0; font-size: 0.78rem; }
+.form-error { margin: 0; color: #ffd2d9 !important; }
+.section-kicker { color: var(--accent); font-size: 0.73rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; }
+.loading-label { color: var(--accent); font-size: 0.78rem; }
+.count-badge { margin-left: 4px; padding: 2px 7px; }

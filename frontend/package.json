@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test": "node --experimental-strip-types --test tests/resources.test.ts tests/session.test.ts",
+    "check": "npm run test && npm run build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

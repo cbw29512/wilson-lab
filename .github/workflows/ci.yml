@@ -7,7 +7,7 @@ on:
 
 jobs:
   frontend:
-    name: Frontend (typecheck + build)
+    name: Frontend (tests + typecheck + build)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,6 +24,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Typecheck + Build
+      - name: Test frontend contracts
+        working-directory: frontend
+        run: npm run test
+
+      - name: Typecheck and build
         working-directory: frontend
         run: npm run build
