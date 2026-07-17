@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import desc, select
@@ -54,7 +55,10 @@ def health() -> dict[str, str]:
 
 
 @app.post("/api/v1/auth/token", response_model=Token)
-def login(form: OAuth2PasswordRequestForm, database: Database) -> Token:
+def login(
+    form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    database: Database,
+) -> Token:
     user = authenticate_user(database, form.username, form.password)
     if not user:
         raise HTTPException(
@@ -72,7 +76,10 @@ def current_user(user: CurrentUser) -> UserPublic:
 
 @app.get("/api/v1/inventory", response_model=list[Resource])
 def inventory(_: CurrentUser, runtime: Runtime) -> list[Resource]:
-    return runtime.list_resources()
+    try:
+        return runtime.list_resources()
+    except RuntimeError as error:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
 
 
 @app.get("/api/v1/inventory/{resource_id}", response_model=Resource)
