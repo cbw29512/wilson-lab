@@ -46,9 +46,9 @@ check "ubuntu_image_exists" {
 
 resource "oci_core_vcn" "wilson_lab" {
   compartment_id = var.compartment_ocid
-  cidr_blocks     = [var.vcn_cidr]
-  display_name    = "${var.display_name}-vcn"
-  dns_label       = "wilsonlab"
+  cidr_blocks    = [var.vcn_cidr]
+  display_name   = "${var.display_name}-vcn"
+  dns_label      = "wilsonlab"
 
   freeform_tags = {
     project   = "wilson-lab"
