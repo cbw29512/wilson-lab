@@ -1,207 +1,126 @@
-/**
- * Purpose: wilson-lab dashboard UI (v1).
- * Why: Interview-ready SaaS-style overview of lab resources (containers/VMs) with search + tag filtering.
- * Next: Wire to backend API (/api/v1/inventory) once M2 exists; keep this mock as fallback.
- */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import "./app.css";
-import { BUILD_SHA, BUILD_LABEL } from "./buildInfo";
-
-type ResourceType = "container" | "vm";
-type ResourceStatus = "running" | "stopped" | "planned" | "error" | "unknown";
-
-type Resource = {
-  id: string;
-  name: string;
-  type: ResourceType;
-  status: ResourceStatus;
-  description: string;
-  tags: string[];
-  created_utc: string;
-  updated_utc: string;
-};
-
-function fmtUtc(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(
-    d.getUTCHours()
-  )}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}Z`;
-}
-
-function uniq<T>(arr: T[]): T[] {
-  return Array.from(new Set(arr));
-}
+import { AuditPanel } from "./components/AuditPanel";
+import { ConfirmDialog } from "./components/ConfirmDialog";
+import { DashboardControls } from "./components/DashboardControls";
+import { DashboardHeader } from "./components/DashboardHeader";
+import { LoginPanel } from "./components/LoginPanel";
+import { NoticeBanner } from "./components/NoticeBanner";
+import { ResourceCard } from "./components/ResourceCard";
+import { ResourceDrawer } from "./components/ResourceDrawer";
+import { useDeploymentRefresh } from "./hooks/useDeploymentRefresh";
+import { useLabDashboard } from "./hooks/useLabDashboard";
+import { filterResources, uniqueTags, type ResourceSort } from "./lib/resources";
+import type { OperationIntent, Resource } from "./types";
 
 export default function App() {
-  // WILSONLAB_AUTO_REFRESH_V1
-  useEffect(() => {
-    let stopped = false;
-
-    const check = async () => {
-      try {
-        const base = (import.meta as any).env?.BASE_URL || "/";
-        const url = `${base}version.json?v=${Date.now()}`;
-        const r = await fetch(url, { cache: "no-store" });
-        if (!r.ok) return;
-        const j = await r.json();
-        const live = String(j.sha || "").slice(0, 7);
-        if (live && live !== BUILD_SHA) {
-          // New deploy detected -> hard refresh
-          if (!stopped) window.location.reload();
-        }
-      } catch (_e) {
-        // ignore
-      }
-    };
-
-    // check now + every 30s
-    check();
-    const id = window.setInterval(check, 30_000);
-    return () => {
-      stopped = true;
-      window.clearInterval(id);
-    };
-  }, []);
-
-  const [resources, setResources] = useState<Resource[]>([]);
+  useDeploymentRefresh();
+  const dashboard = useLabDashboard();
   const [query, setQuery] = useState("");
-  const [tag, setTag] = useState<string>("all");
-  const [sort, setSort] = useState<"recent" | "name">("recent");
+  const [tag, setTag] = useState("all");
+  const [sort, setSort] = useState<ResourceSort>("recent");
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+  const [pendingOperation, setPendingOperation] = useState<OperationIntent | null>(null);
+  const [auditOpen, setAuditOpen] = useState(false);
 
-  useEffect(() => {
-    const mockUrl = `${import.meta.env.BASE_URL}mock/resources.json`;
-    const apiUrl = "/api/v1/inventory";
-    fetch(apiUrl, { cache: "no-store" })
-      .then((r) => (r.ok ? r : Promise.reject(new Error(`api ${r.status}`))))
-      .catch(() => fetch(mockUrl, { cache: "no-store" }))
-      .then((r) => r.json())
-      .then((data) => setResources(data))
-      .catch(() => setResources([]));
-  }, []);
+  const tags = useMemo(() => uniqueTags(dashboard.resources), [dashboard.resources]);
+  const filtered = useMemo(
+    () => filterResources(dashboard.resources, query, tag, sort),
+    [dashboard.resources, query, sort, tag],
+  );
 
-  const allTags = useMemo(() => {
-    const tags = resources.flatMap((r) => r.tags || []);
-    return ["all", ...uniq(tags).sort((a, b) => a.localeCompare(b))];
-  }, [resources]);
+  async function confirmOperation() {
+    if (!pendingOperation) return;
+    const updated = await dashboard.operate(pendingOperation);
+    if (updated && selectedResource?.id === updated.id) setSelectedResource(updated);
+    setPendingOperation(null);
+  }
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
-    let out = resources.filter((r) => {
-      const matchesQuery =
-        !q ||
-        r.name.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q) ||
-        r.tags.join(" ").toLowerCase().includes(q);
-
-      const matchesTag = tag === "all" ? true : r.tags.includes(tag);
-
-      return matchesQuery && matchesTag;
-    });
-
-    out.sort((a, b) => {
-      if (sort === "name") return a.name.localeCompare(b.name);
-      return new Date(b.updated_utc).getTime() - new Date(a.updated_utc).getTime();
-    });
-
-    return out;
-  }, [resources, query, tag, sort]);
+  async function signOut() {
+    setSelectedResource(null);
+    setAuditOpen(false);
+    await dashboard.signOut();
+  }
 
   return (
     <div className="page">
-      <header className="topbar">
-        <div className="brand">
-          <div className="logo">W</div>
-          <div>
-            <div className="title">wilson-lab</div>
-            <div className="subtitle">Lab Orchestrator Dashboard</div>
-          </div>
-        </div>
-
-        <div className="controls">
-          <input
-            className="search"
-            placeholder="Search resources, tags, descriptions…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-
-          <select className="select" value={tag} onChange={(e) => setTag(e.target.value)}>
-            {allTags.map((t) => (
-              <option key={t} value={t}>
-                {t === "all" ? "All tags" : t}
-              </option>
-            ))}
-          </select>
-
-          <select className="select" value={sort} onChange={(e) => setSort(e.target.value as any)}>
-            <option value="recent">Sort: Most recent</option>
-            <option value="name">Sort: Name</option>
-          </select>
-        </div>
-      </header>
+      <DashboardHeader
+        apiStatus={dashboard.apiStatus}
+        dataSource={dashboard.dataSource}
+        loading={dashboard.loading}
+        session={dashboard.session}
+        onRefresh={() => void dashboard.refresh()}
+        onSignOut={() => void signOut()}
+      />
 
       <main className="content">
-        <div className="meta">
-          <div className="meta-left">
+        <NoticeBanner notice={dashboard.notice} />
+        {!dashboard.session && (
+          <LoginPanel
+            apiStatus={dashboard.apiStatus}
+            loading={dashboard.loading}
+            onSignIn={dashboard.signIn}
+          />
+        )}
+
+        <section className="dashboard-toolbar" aria-label="Inventory controls">
+          <div className="inventory-summary">
             <span className="pill">UTC</span>
-            <span className="muted">{filtered.length} resources</span>
+            <strong>{filtered.length}</strong>
+            <span className="muted">of {dashboard.resources.length} resources</span>
+            {dashboard.loading && <span className="loading-label">Refreshing…</span>}
           </div>
-          <div className="meta-right muted">v1 mock inventory (M1) → real API inventory (M2) <span className="mono"> • {BUILD_LABEL}</span></div>
-        </div>
+          <DashboardControls
+            query={query}
+            tag={tag}
+            sort={sort}
+            tags={tags}
+            onQueryChange={setQuery}
+            onTagChange={setTag}
+            onSortChange={setSort}
+          />
+          {dashboard.session?.user.role === "admin" && (
+            <button className="btn audit-button" type="button" onClick={() => setAuditOpen(true)}>
+              Audit timeline <span className="count-badge">{dashboard.auditEvents.length}</span>
+            </button>
+          )}
+        </section>
 
-        <div className="grid">
-          {filtered.map((r) => (
-            <article key={r.id} className="card">
-              <div className="card-top">
-                <div>
-                  <div className="card-title">{r.name}</div>
-                  <div className="card-subtitle">
-                    <span className={`badge badge-${r.type}`}>{r.type.toUpperCase()}</span>
-                    <span className={`badge badge-status badge-${r.status}`}>{r.status}</span>
-                  </div>
-                </div>
-              </div>
-
-              <p className="desc">{r.description}</p>
-
-              <div className="tags">
-                {r.tags.map((t) => (
-                  <span key={t} className="tag">
-                    {t}
-                  </span>
-                ))}
-              </div>
-
-              <div className="times">
-                <div className="time-row">
-                  <span className="muted">Created</span>
-                  <span className="mono">{fmtUtc(r.created_utc)}</span>
-                </div>
-                <div className="time-row">
-                  <span className="muted">Updated</span>
-                  <span className="mono">{fmtUtc(r.updated_utc)}</span>
-                </div>
-              </div>
-
-              <div className="actions">
-                <button className="btn" disabled>View</button>
-                <button className="btn btn-primary" disabled>Actions</button>
-              </div>
-            </article>
+        <section className="grid" aria-label="Lab resources">
+          {filtered.map((resource) => (
+            <ResourceCard
+              key={resource.id}
+              resource={resource}
+              session={dashboard.session}
+              loading={dashboard.loading}
+              onView={setSelectedResource}
+              onOperate={setPendingOperation}
+            />
           ))}
-        </div>
+        </section>
 
-        {resources.length === 0 && (
+        {!dashboard.loading && filtered.length === 0 && (
           <div className="empty">
-            <div className="empty-title">No resources loaded</div>
-            <div className="muted">
-              Expected <span className="mono">public/mock/resources.json</span>.
-            </div>
+            <strong>No matching resources</strong>
+            <p>Clear the search or choose a different tag.</p>
           </div>
         )}
       </main>
+
+      <ResourceDrawer
+        resource={selectedResource}
+        session={dashboard.session}
+        loading={dashboard.loading}
+        onClose={() => setSelectedResource(null)}
+        onOperate={setPendingOperation}
+      />
+      <ConfirmDialog
+        intent={pendingOperation}
+        loading={dashboard.loading}
+        onCancel={() => setPendingOperation(null)}
+        onConfirm={() => void confirmOperation()}
+      />
+      <AuditPanel events={dashboard.auditEvents} open={auditOpen} onClose={() => setAuditOpen(false)} />
     </div>
   );
 }
