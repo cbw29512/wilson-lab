@@ -4,6 +4,10 @@ function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }
 
+function nullableString(value: unknown): boolean {
+  return value === null || typeof value === "string";
+}
+
 export function parseUser(value: unknown): User {
   const item = record(value);
   if (
@@ -15,7 +19,7 @@ export function parseUser(value: unknown): User {
   ) {
     throw new Error("The API returned an invalid user response");
   }
-  return item as User;
+  return item as unknown as User;
 }
 
 export function parseResource(value: unknown): Resource {
@@ -35,12 +39,14 @@ export function parseResource(value: unknown): Resource {
     !actions.every((action) => ["start", "stop", "restart"].includes(String(action))) ||
     typeof item.environment !== "string" ||
     typeof item.host_name !== "string" ||
+    !nullableString(item.image_name) ||
+    !nullableString(item.health_status) ||
     typeof item.created_utc !== "string" ||
     typeof item.updated_utc !== "string"
   ) {
     throw new Error("The API returned an invalid resource response");
   }
-  return item as Resource;
+  return item as unknown as Resource;
 }
 
 export function parseResources(value: unknown): Resource[] {
@@ -57,12 +63,15 @@ export function parseAuditEvents(value: unknown): AuditEvent[] {
       typeof item.id !== "number" ||
       typeof item.actor_id !== "number" ||
       typeof item.event_type !== "string" ||
+      !nullableString(item.resource_id) ||
+      !(item.action_request_id === null || typeof item.action_request_id === "number") ||
       typeof item.outcome !== "string" ||
+      !nullableString(item.source_ip) ||
       typeof item.detail !== "string" ||
       typeof item.created_at !== "string"
     ) {
       throw new Error("The API returned an invalid audit event");
     }
-    return item as AuditEvent;
+    return item as unknown as AuditEvent;
   });
 }
