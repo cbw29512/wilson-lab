@@ -1,14 +1,21 @@
 from functools import lru_cache
+from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+DEFAULT_JWT_SECRET = "replace-this-in-production"
+DEFAULT_VIEWER_PASSWORD = "viewer-demo-change-me"
+DEFAULT_ADMIN_PASSWORD = "admin-demo-change-me"
 
 
 class Settings(BaseSettings):
     app_name: str = "Wilson Lab API"
     environment: str = "development"
     database_url: str = "sqlite:///./wilson_lab.db"
-    jwt_secret: str = "replace-this-in-production"
+    jwt_secret: str = DEFAULT_JWT_SECRET
+    jwt_secret_file: str | None = None
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 30
     runtime_mode: str = "mock"
@@ -16,9 +23,11 @@ class Settings(BaseSettings):
     managed_label: str = "wilson-lab.managed=true"
     seed_demo_users: bool = True
     viewer_username: str = "viewer"
-    viewer_password: str = "viewer-demo-change-me"
+    viewer_password: str = DEFAULT_VIEWER_PASSWORD
+    viewer_password_file: str | None = None
     admin_username: str = "admin"
-    admin_password: str = "admin-demo-change-me"
+    admin_password: str = DEFAULT_ADMIN_PASSWORD
+    admin_password_file: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -34,12 +43,43 @@ class Settings(BaseSettings):
             raise ValueError("runtime_mode must be 'mock' or 'docker'")
         return normalized
 
-    @field_validator("jwt_secret")
-    @classmethod
-    def reject_default_secret_in_production(cls, value: str, info):
-        environment = str(info.data.get("environment", "development")).lower()
-        if environment == "production" and value == "replace-this-in-production":
-            raise ValueError("Set WILSON_LAB_JWT_SECRET in production")
+    @model_validator(mode="after")
+    def resolve_and_validate_secrets(self):
+        self.jwt_secret = self._read_secret(self.jwt_secret_file, self.jwt_secret, "JWT secret")
+        self.viewer_password = self._read_secret(
+            self.viewer_password_file,
+            self.viewer_password,
+            "Viewer password",
+        )
+        self.admin_password = self._read_secret(
+            self.admin_password_file,
+            self.admin_password,
+            "Administrator password",
+        )
+
+        if self.environment.lower() == "production":
+            if self.jwt_secret == DEFAULT_JWT_SECRET or len(self.jwt_secret) < 32:
+                raise ValueError("Production JWT secret must be at least 32 characters")
+            if self.seed_demo_users:
+                if self.viewer_password == DEFAULT_VIEWER_PASSWORD or len(self.viewer_password) < 16:
+                    raise ValueError("Production Viewer password must be at least 16 characters")
+                if self.admin_password == DEFAULT_ADMIN_PASSWORD or len(self.admin_password) < 16:
+                    raise ValueError("Production Administrator password must be at least 16 characters")
+                if self.viewer_password == self.admin_password:
+                    raise ValueError("Viewer and Administrator passwords must differ")
+        return self
+
+    @staticmethod
+    def _read_secret(file_name: str | None, fallback: str, label: str) -> str:
+        if not file_name:
+            return fallback
+        path = Path(file_name)
+        try:
+            value = path.read_text(encoding="utf-8").strip()
+        except OSError as error:
+            raise ValueError(f"{label} file could not be read") from error
+        if not value:
+            raise ValueError(f"{label} file is empty")
         return value
 
 
