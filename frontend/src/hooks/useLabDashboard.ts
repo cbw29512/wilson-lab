@@ -77,8 +77,15 @@ export function useLabDashboard() {
     try {
       const available = await checkApi();
       setApiStatus(available ? "available" : "unavailable");
-      if (available && session) await loadLive(session);
-      else await loadDemo();
+      if (available && session) {
+        await loadLive(session);
+      } else {
+        if (!available && session) {
+          clearSession();
+          setSession(null);
+        }
+        await loadDemo();
+      }
     } catch (error) {
       await handleFailure(error, "The dashboard could not be refreshed");
     } finally {
@@ -134,7 +141,7 @@ export function useLabDashboard() {
 
   useEffect(() => {
     void refresh();
-  }, []); // Initial connectivity check only; later refreshes are explicit.
+  }, []);
 
   return {
     apiStatus,
