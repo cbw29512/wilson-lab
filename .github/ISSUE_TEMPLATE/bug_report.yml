@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a reproducible non-security defect
+title: "Bug: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report vulnerabilities, credentials, tokens, cloud identifiers, or private infrastructure details here. Use SECURITY.md for private reporting.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest safe sequence that reproduces the problem.
+      placeholder: |
+        1. Open...
+        2. Select...
+        3. Observe...
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Frontend dashboard
+        - FastAPI backend
+        - Docker deployment
+        - OCI Terraform
+        - Verification tooling
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Safe environment details
+      description: Include browser, operating system, commit, or demo/live mode. Remove credentials and private identifiers.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I removed passwords, tokens, private keys, Terraform state, tenancy identifiers, and private infrastructure details.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
