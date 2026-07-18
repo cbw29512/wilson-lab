@@ -36,11 +36,24 @@ jobs:
           cache: pip
           cache-dependency-path: backend/pyproject.toml
 
-      - name: Install backend and audit tooling
-        working-directory: backend
+      - name: Install audit tooling
         run: |
           python -m pip install --upgrade pip
-          pip install -e . pip-audit
+          pip install pip-audit
+
+      - name: Derive backend requirements from pyproject
+        run: |
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          project = tomllib.loads(Path("backend/pyproject.toml").read_text(encoding="utf-8"))
+          dependencies = project["project"]["dependencies"]
+          Path("backend-audit-requirements.txt").write_text(
+              "\n".join(dependencies) + "\n",
+              encoding="utf-8",
+          )
+          PY
 
       - name: Audit third-party backend dependencies
         id: backend_audit
@@ -48,7 +61,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          pip-audit --local --skip-editable --strict --format json \
+          pip-audit --requirement backend-audit-requirements.txt --strict --format json \
             > backend-audit.json 2> backend-audit.stderr
 
       - name: Upload backend audit evidence
@@ -57,6 +70,7 @@ jobs:
         with:
           name: backend-dependency-audit
           path: |
+            backend-audit-requirements.txt
             backend-audit.json
             backend-audit.stderr
           if-no-files-found: error
