@@ -33,8 +33,11 @@ jobs:
       - name: Compile verification tooling
         run: python -m compileall -q tools
 
-      - name: Run verification unit tests
+      - name: Run verification and evidence tests
         run: python -m unittest discover -s tools/tests -v
 
-      - name: Confirm command-line interface
+      - name: Confirm verifier command-line interface
         run: python tools/verify_live.py --help
+
+      - name: Confirm evidence command-line interface
+        run: python tools/render_evidence.py --help
