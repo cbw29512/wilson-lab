@@ -45,7 +45,10 @@ jobs:
       - name: Audit installed backend dependencies
         id: backend_audit
         continue-on-error: true
-        run: pip-audit --local --strict --format json --output backend-audit.json
+        shell: bash
+        run: |
+          set -o pipefail
+          pip-audit --local --strict --format json > backend-audit.json
 
       - name: Upload backend audit evidence
         if: always()
