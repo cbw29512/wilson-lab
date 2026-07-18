@@ -1,0 +1,40 @@
+name: Verification Tool CI
+
+on:
+  pull_request:
+    paths:
+      - "tools/**"
+      - ".github/workflows/verification-ci.yml"
+      - ".github/workflows/live-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "tools/**"
+      - ".github/workflows/verification-ci.yml"
+      - ".github/workflows/live-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile verification tooling
+        run: python -m compileall -q tools
+
+      - name: Run verification unit tests
+        run: python -m unittest discover -s tools/tests -v
+
+      - name: Confirm command-line interface
+        run: python tools/verify_live.py --help
