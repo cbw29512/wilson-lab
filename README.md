@@ -1,6 +1,6 @@
 # Wilson Lab
 
-A security-conscious infrastructure control-plane showcase built to demonstrate product thinking, technical discovery, API design, authorization, operational safety, infrastructure as code, and clear communication.
+A security-conscious infrastructure control-plane showcase built to demonstrate product thinking, technical discovery, API design, authorization, operational safety, infrastructure as code, deployment verification, and clear communication.
 
 **Live dashboard:** https://cbw29512.github.io/wilson-lab/
 
@@ -22,7 +22,8 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 - File-backed production secrets
 - Backup and integrity-checked restore workflows
 - Terraform-managed Oracle Cloud network and compute resources
-- Automated frontend, backend, deployment, and infrastructure CI
+- Credential-safe live deployment verification
+- Automated frontend, backend, deployment, infrastructure, and verification CI
 
 ## Current milestone
 
@@ -33,8 +34,9 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 | M2 — Secure API foundation | Complete | Auth, RBAC, inventory, operations, audit trail, tests |
 | M3 — Frontend/API integration | Complete | Login, live-data state, role-aware controls, confirmation, details, audit panel |
 | M4 — Cloud deployment bundle | Complete | Caddy HTTPS, hardened Compose stack, secrets, backups, preflight, deployment CI |
-| M5 — OCI infrastructure as code | Complete in PR #4 | VCN, firewall, A1 VM, Ubuntu image selection, cloud-init, Resource Manager runbook |
-| M6 — Live activation | External step | Activate OCI account, apply stack, create DNS record, connect Pages to API |
+| M5 — OCI infrastructure as code | Complete | VCN, firewall, A1 VM, Ubuntu image selection, cloud-init, Resource Manager runbook |
+| M6 — Live verification tooling | Complete in PR #5 | Health, RBAC, confirmation, operation, audit, redaction tests, scheduled monitoring |
+| M7 — Live activation | External step | Activate OCI account, apply stack, create DNS record, connect Pages to API |
 
 ## Architecture
 
@@ -49,6 +51,7 @@ flowchart LR
     Runtime --> Containers[Isolated labeled\ndemo containers]
     IaC[Terraform / OCI Resource Manager] --> Cloud[VCN + subnet + firewall\nA1 Flex Ubuntu VM]
     Cloud --> Proxy
+    Verify[Credential-safe verifier\nGitHub Actions or PowerShell] --> Proxy
 ```
 
 The Docker adapter only sees containers labeled `wilson-lab.managed=true`. It exposes no shell execution, container creation, deletion, image pulling, or arbitrary Docker commands. The Docker-backed stack belongs only on a dedicated disposable VM.
@@ -119,6 +122,18 @@ The OCI Terraform module includes:
 
 Actual activation still requires an OCI account and a DNS name controlled by the user.
 
+## Live verification
+
+[`tools/verify_live.py`](tools/verify_live.py) verifies the deployed security and product contract at three levels:
+
+- `health`: HTTPS health response and exact CORS origin
+- `read-only`: authentication, inventory, resource details, Viewer restrictions, confirmation enforcement, and Administrator audit access
+- `full`: one confirmed managed operation plus matching audit evidence
+
+The scheduled GitHub Actions run is health-only and cannot change container state. Authenticated checks require repository secrets, and generated JSON evidence excludes passwords and bearer tokens.
+
+See [`docs/LIVE_VERIFICATION.md`](docs/LIVE_VERIFICATION.md) for GitHub Actions and PowerShell procedures.
+
 ## Validate
 
 ```bash
@@ -134,6 +149,10 @@ cd ../infra/oci
 terraform fmt -check
 terraform init -backend=false
 terraform validate
+
+cd ../..
+python -m compileall -q tools
+python -m unittest discover -s tools/tests -v
 ```
 
 Deployment CI separately validates the Compose stack, Caddyfile, shell scripts, hardened API image, and non-root container identity.
@@ -149,9 +168,11 @@ Wilson Lab is intentionally narrow:
 - Docker resources are checked against the management label before use.
 - Production startup rejects weak, default, duplicate, missing, or unreadable secrets.
 - OCI security rules expose SSH only to a supplied `/32` and web traffic only on 80/443.
+- Live verification reports redact bearer tokens and never include configured passwords.
+- Scheduled monitoring performs no authenticated or state-changing requests.
 - The Docker-backed mode belongs on a dedicated cloud sandbox, never a home or production host.
 
-See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model, [`backend/README.md`](backend/README.md) for API setup, [`deploy/README.md`](deploy/README.md) for cloud operations, and [`infra/oci/README.md`](infra/oci/README.md) for Oracle activation.
+See [`docs/SECURITY.md`](docs/SECURITY.md), [`backend/README.md`](backend/README.md), [`deploy/README.md`](deploy/README.md), [`infra/oci/README.md`](infra/oci/README.md), and [`docs/LIVE_VERIFICATION.md`](docs/LIVE_VERIFICATION.md).
 
 ## Documentation
 
@@ -159,6 +180,7 @@ See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model, [`backend/READM
 - [`docs/SECURITY.md`](docs/SECURITY.md) — threats, controls, and accepted risks
 - [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md) — chronological engineering record
 - [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) — interview demonstration flow
+- [`docs/LIVE_VERIFICATION.md`](docs/LIVE_VERIFICATION.md) — live health, RBAC, operation, audit, and evidence checks
 - [`backend/README.md`](backend/README.md) — API endpoints and local setup
 - [`deploy/README.md`](deploy/README.md) — cloud deployment and recovery runbook
 - [`infra/oci/README.md`](infra/oci/README.md) — Oracle Resource Manager and Terraform activation
