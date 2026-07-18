@@ -1,0 +1,90 @@
+name: Live Deployment Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_origin:
+        description: "HTTPS API origin. Leave blank to use repository variable VITE_API_ORIGIN."
+        required: false
+        type: string
+      level:
+        description: "Verification depth. Full performs one confirmed managed restart when available."
+        required: true
+        default: "read-only"
+        type: choice
+        options:
+          - health
+          - read-only
+          - full
+      frontend_origin:
+        description: "Expected exact CORS origin."
+        required: true
+        default: "https://cbw29512.github.io"
+        type: string
+  schedule:
+    - cron: "17 12 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.VITE_API_ORIGIN != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      WILSON_LAB_API_ORIGIN: ${{ inputs.api_origin || vars.VITE_API_ORIGIN }}
+      WILSON_LAB_FRONTEND_ORIGIN: ${{ inputs.frontend_origin || 'https://cbw29512.github.io' }}
+      WILSON_LAB_VIEWER_USERNAME: ${{ vars.WILSON_LAB_VIEWER_USERNAME || 'viewer' }}
+      WILSON_LAB_ADMIN_USERNAME: ${{ vars.WILSON_LAB_ADMIN_USERNAME || 'admin' }}
+      WILSON_LAB_VIEWER_PASSWORD: ${{ secrets.WILSON_LAB_VIEWER_PASSWORD }}
+      WILSON_LAB_ADMIN_PASSWORD: ${{ secrets.WILSON_LAB_ADMIN_PASSWORD }}
+      VERIFY_LEVEL: ${{ inputs.level || 'health' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate verification inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$WILSON_LAB_API_ORIGIN" ]]; then
+            echo "::error::Provide api_origin or create the VITE_API_ORIGIN repository variable."
+            exit 2
+          fi
+          if [[ "$WILSON_LAB_API_ORIGIN" != https://* ]]; then
+            echo "::error::Live verification accepts only an HTTPS API origin."
+            exit 2
+          fi
+          if [[ "$VERIFY_LEVEL" != "health" ]]; then
+            if [[ -z "$WILSON_LAB_VIEWER_PASSWORD" || -z "$WILSON_LAB_ADMIN_PASSWORD" ]]; then
+              echo "::error::Read-only and full verification require WILSON_LAB_VIEWER_PASSWORD and WILSON_LAB_ADMIN_PASSWORD repository secrets."
+              exit 2
+            fi
+          fi
+
+      - name: Run sanitized live verification
+        run: |
+          python tools/verify_live.py \
+            --level "$VERIFY_LEVEL" \
+            --report artifacts/live-verification-report.json
+
+      - name: Upload sanitized verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-verification-${{ github.run_number }}
+          path: artifacts/live-verification-report.json
+          if-no-files-found: warn
+          retention-days: 30
