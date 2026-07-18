@@ -1,8 +1,44 @@
 # Wilson Lab
 
+[![Frontend CI](https://github.com/cbw29512/wilson-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/cbw29512/wilson-lab/actions/workflows/ci.yml)
+[![Backend CI](https://github.com/cbw29512/wilson-lab/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/cbw29512/wilson-lab/actions/workflows/backend-ci.yml)
+[![Deployment CI](https://github.com/cbw29512/wilson-lab/actions/workflows/deployment-ci.yml/badge.svg)](https://github.com/cbw29512/wilson-lab/actions/workflows/deployment-ci.yml)
+[![Dependency Audit](https://github.com/cbw29512/wilson-lab/actions/workflows/dependency-audit.yml/badge.svg)](https://github.com/cbw29512/wilson-lab/actions/workflows/dependency-audit.yml)
+[![Release Check](https://github.com/cbw29512/wilson-lab/actions/workflows/release-check.yml/badge.svg)](https://github.com/cbw29512/wilson-lab/actions/workflows/release-check.yml)
+
 A security-conscious infrastructure control-plane showcase built to demonstrate product thinking, technical discovery, API design, authorization, operational safety, infrastructure as code, deployment verification, and clear communication.
 
-**Live dashboard:** https://cbw29512.github.io/wilson-lab/
+**[Open the live dashboard](https://cbw29512.github.io/wilson-lab/)** · **[Read the case study](docs/CASE_STUDY.md)** · **[Review the changelog](CHANGELOG.md)**
+
+> The public dashboard is live in validated demo mode. The private cloud API is fully prepared and tested but still requires the repository owner's OCI account, DNS, and GitHub-secret activation.
+
+## At a glance
+
+| Area | Implementation |
+|---|---|
+| Product | Searchable infrastructure dashboard with explicit demo/live provenance |
+| Frontend | React 19, TypeScript, Vite, runtime response validation |
+| API | FastAPI, JWT authentication, Viewer/Admin RBAC, readiness checks |
+| Safety | Confirmation, state validation, login throttling, Docker label allowlist |
+| Evidence | SQLite audit trail plus sanitized JSON and Markdown proof bundles |
+| Deployment | Hardened Docker Compose, Caddy HTTPS, file-backed secrets |
+| Cloud | OCI Terraform and Resource Manager packaging |
+| Quality | Frontend, backend, deployment, infrastructure, verification, audit, and release CI |
+| Release | `0.8.0` |
+
+## Why this project matters
+
+Wilson Lab demonstrates more than framework familiarity. It shows how to translate privileged infrastructure access into a product that customers and stakeholders can understand:
+
+- make data provenance obvious instead of presenting demo data as live
+- enforce roles on the server rather than trusting browser controls
+- reduce a powerful Docker integration to three explainable operations
+- require confirmation and record both successes and failures
+- keep the public experience useful during API downtime
+- automate deployment, verification, dependency review, and release evidence
+- state external blockers honestly rather than overstating completion
+
+That combination is directly relevant to Sales Engineer, Solutions Consultant, Technical Account Manager, implementation, and customer-facing infrastructure roles.
 
 ## What it demonstrates
 
@@ -26,7 +62,7 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 - Backup and integrity-checked restore workflows
 - Terraform-managed Oracle Cloud network and compute resources
 - Credential-safe live deployment verification and recruiter evidence
-- Automated frontend, backend, deployment, infrastructure, verification, and dependency-audit CI
+- Automated frontend, backend, deployment, infrastructure, verification, dependency-audit, and release CI
 
 ## Current milestone
 
@@ -41,6 +77,7 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 | M6 — Live verification tooling | Complete in PR #6 | Health, RBAC, confirmation, operation, audit, redaction tests, scheduled monitoring |
 | M7 — Recruiter evidence | Complete in PR #7 | Sanitized JSON, validated Markdown proof bundle, three-minute demo script |
 | M8 — API and repository hardening | Complete in PR #8 | Login throttling, readiness, request IDs, dependency audits, security contribution policy |
+| Release 0.8.0 | Prepared | Version contract, changelog, case study, release manifest, CI badges |
 | M9 — Live activation | External step | Activate OCI account, apply stack, create DNS record, connect Pages to API |
 
 ## Architecture
@@ -161,7 +198,7 @@ python -m compileall -q tools
 python -m unittest discover -s tools/tests -v
 ```
 
-Deployment CI separately validates the Compose stack, Caddyfile, shell scripts, hardened API image, and non-root container identity. Dependency Audit runs on relevant pull requests, changes to `main`, manual dispatch, and a weekly schedule.
+Deployment CI separately validates the Compose stack, Caddyfile, shell scripts, hardened API image, and non-root container identity. Dependency Audit runs on relevant pull requests, changes to `main`, manual dispatch, and a weekly schedule. Release Check verifies that `VERSION`, the backend package, the changelog, the case study, and any future `v*` tag agree.
 
 ## Security model
 
@@ -186,6 +223,8 @@ Read [`SECURITY.md`](SECURITY.md) before reporting a vulnerability and [`CONTRIB
 
 ## Documentation
 
+- [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) — recruiter-facing problem, decisions, tradeoffs, evidence, and value
+- [`CHANGELOG.md`](CHANGELOG.md) — versioned release history and activation boundary
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — components and trust boundaries
 - [`docs/SECURITY.md`](docs/SECURITY.md) — threats, controls, and accepted risks
 - [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md) — chronological engineering record
