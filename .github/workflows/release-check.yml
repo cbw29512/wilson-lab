@@ -1,0 +1,102 @@
+name: Release Check
+
+on:
+  pull_request:
+    paths:
+      - "VERSION"
+      - "CHANGELOG.md"
+      - "backend/pyproject.toml"
+      - "docs/CASE_STUDY.md"
+      - ".github/workflows/release-check.yml"
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+    paths:
+      - "VERSION"
+      - "CHANGELOG.md"
+      - "backend/pyproject.toml"
+      - "docs/CASE_STUDY.md"
+      - ".github/workflows/release-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-contract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate release metadata
+        env:
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import tomllib
+          from pathlib import Path
+
+          version = Path("VERSION").read_text(encoding="utf-8").strip()
+          if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              raise SystemExit(f"VERSION must use semantic versioning, received: {version!r}")
+
+          project = tomllib.loads(Path("backend/pyproject.toml").read_text(encoding="utf-8"))
+          backend_version = project["project"]["version"]
+          if backend_version != version:
+              raise SystemExit(
+                  f"Backend version {backend_version!r} does not match VERSION {version!r}"
+              )
+
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          if f"## [{version}]" not in changelog:
+              raise SystemExit(f"CHANGELOG.md does not contain a [{version}] release heading")
+
+          case_study = Path("docs/CASE_STUDY.md").read_text(encoding="utf-8")
+          if "## Current status" not in case_study or "External activation remaining" not in case_study:
+              raise SystemExit("Case study must document current status and external activation")
+
+          if os.environ.get("GITHUB_REF_TYPE") == "tag":
+              expected_tag = f"v{version}"
+              actual_tag = os.environ.get("GITHUB_REF_NAME")
+              if actual_tag != expected_tag:
+                  raise SystemExit(
+                      f"Tag {actual_tag!r} does not match release version {expected_tag!r}"
+                  )
+
+          manifest = {
+              "project": "wilson-lab",
+              "version": version,
+              "backend_version": backend_version,
+              "commit": os.environ.get("GITHUB_SHA", ""),
+              "dashboard": "https://cbw29512.github.io/wilson-lab/",
+              "live_api_status": "external activation required",
+              "security_boundary": "dedicated disposable sandbox only",
+          }
+          Path("release-manifest.json").write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(manifest, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload release manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilson-lab-release-manifest
+          path: release-manifest.json
+          if-no-files-found: error
+          retention-days: 90
