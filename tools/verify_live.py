@@ -25,6 +25,10 @@ class VerificationError(RuntimeError):
     """Raised when a verification assertion fails."""
 
 
+class SecretToken(str):
+    """String-compatible token whose value must never enter evidence output."""
+
+
 @dataclass
 class CheckResult:
     name: str
@@ -74,7 +78,7 @@ class WilsonLabVerifier:
         inventory_count = 0
         exercised_resource: str | None = None
         if self.level in {"read-only", "full"}:
-            self._require_credentials()
+            self._check("credential configuration", self._require_credentials)
             self._check("invalid credentials rejected", self._verify_invalid_login)
             viewer_token = self._check("Viewer authentication", self._verify_viewer_login)
             viewer_inventory = self._check(
@@ -86,6 +90,7 @@ class WilsonLabVerifier:
                 "Viewer authorization boundary",
                 lambda: self._verify_viewer_restrictions(viewer_token, viewer_inventory),
             )
+
             admin_token = self._check("Administrator authentication", self._verify_admin_login)
             admin_inventory = self._check(
                 "Administrator inventory",
@@ -124,12 +129,13 @@ class WilsonLabVerifier:
             self.results.append(CheckResult(name, "failed", str(error), duration_ms))
             raise
         duration_ms = round((time.perf_counter() - started) * 1000)
-        detail = self._result_detail(value)
-        self.results.append(CheckResult(name, "passed", detail, duration_ms))
+        self.results.append(CheckResult(name, "passed", self._result_detail(value), duration_ms))
         return value
 
     @staticmethod
     def _result_detail(value: Any) -> str:
+        if isinstance(value, SecretToken):
+            return "credential accepted; bearer token redacted"
         if value is None:
             return "completed"
         if isinstance(value, str):
@@ -153,7 +159,7 @@ class WilsonLabVerifier:
             raise VerificationError(f"Unknown verification level: {self.level}")
         return f"validated {parsed.scheme} origin and {self.level} level"
 
-    def _require_credentials(self) -> None:
+    def _require_credentials(self) -> str:
         missing = [
             name
             for name, value in {
@@ -164,6 +170,9 @@ class WilsonLabVerifier:
         ]
         if missing:
             raise VerificationError(f"Missing required secret(s): {', '.join(missing)}")
+        if self.viewer_password == self.admin_password:
+            raise VerificationError("Viewer and Administrator passwords must differ")
+        return "required credentials are present and distinct"
 
     def _verify_health(self) -> dict[str, str]:
         response = self._request("GET", "/health")
@@ -191,8 +200,7 @@ class WilsonLabVerifier:
             raise VerificationError(
                 f"CORS allowed origin was {allowed_origin!r}, expected {self.frontend_origin!r}"
             )
-        allowed_methods = response.headers.get("access-control-allow-methods", "")
-        if "GET" not in allowed_methods:
+        if "GET" not in response.headers.get("access-control-allow-methods", ""):
             raise VerificationError("CORS preflight did not allow GET")
         return f"allowed exact origin {allowed_origin}"
 
@@ -201,7 +209,7 @@ class WilsonLabVerifier:
         self._expect_status(response, 401)
         return "invalid password returned 401"
 
-    def _verify_viewer_login(self) -> str:
+    def _verify_viewer_login(self) -> SecretToken:
         token = self._expect_token(self._login(self.viewer_username, self.viewer_password))
         identity = self._identity(token)
         if identity.get("role") != "viewer" or identity.get("is_active") is not True:
@@ -210,7 +218,7 @@ class WilsonLabVerifier:
             raise VerificationError("Viewer identity username did not match the configured account")
         return token
 
-    def _verify_admin_login(self) -> str:
+    def _verify_admin_login(self) -> SecretToken:
         token = self._expect_token(self._login(self.admin_username, self.admin_password))
         identity = self._identity(token)
         if identity.get("role") != "admin" or identity.get("is_active") is not True:
@@ -228,14 +236,15 @@ class WilsonLabVerifier:
         inventory = self._inventory(token)
         if not inventory:
             raise VerificationError("Managed inventory is empty")
-        detail_response = self._request(
+        selected_id = str(inventory[0]["id"])
+        response = self._request(
             "GET",
-            f"/api/v1/inventory/{urllib.parse.quote(str(inventory[0]['id']), safe='')}",
+            f"/api/v1/inventory/{urllib.parse.quote(selected_id, safe='')}",
             token=token,
         )
-        self._expect_status(detail_response, 200)
-        detail = self._validate_resource(detail_response.payload)
-        if detail["id"] != inventory[0]["id"]:
+        self._expect_status(response, 200)
+        detail = self._validate_resource(response.payload)
+        if detail["id"] != selected_id:
             raise VerificationError("Resource detail did not match the selected inventory item")
         return inventory
 
@@ -286,7 +295,7 @@ class WilsonLabVerifier:
         target = self._operation_target(inventory)
         operation = self._request(
             "POST",
-            f"/api/v1/resources/{urllib.parse.quote(str(target['id']), safe='')}/operations",
+            f"/api/v1/resources/{urllib.parse.quote(target['id'], safe='')}/operations",
             token=token,
             json_body={"action": target["action"], "confirmed": False},
         )
@@ -297,7 +306,7 @@ class WilsonLabVerifier:
         target = self._operation_target(inventory)
         response = self._request(
             "POST",
-            f"/api/v1/resources/{urllib.parse.quote(str(target['id']), safe='')}/operations",
+            f"/api/v1/resources/{urllib.parse.quote(target['id'], safe='')}/operations",
             token=token,
             json_body={"action": target["action"], "confirmed": False},
         )
@@ -323,7 +332,7 @@ class WilsonLabVerifier:
         target = self._operation_target(inventory, prefer_restart=True)
         response = self._request(
             "POST",
-            f"/api/v1/resources/{urllib.parse.quote(str(target['id']), safe='')}/operations",
+            f"/api/v1/resources/{urllib.parse.quote(target['id'], safe='')}/operations",
             token=token,
             json_body={"action": target["action"], "confirmed": True},
         )
@@ -336,8 +345,11 @@ class WilsonLabVerifier:
             raise VerificationError("Operation result did not report the requested successful action")
         self._validate_resource(result.get("resource"))
 
-        audit_events = self._verify_audit(token)
-        matching = [event for event in audit_events if event.get("action_request_id") == request_id]
+        matching = [
+            event
+            for event in self._verify_audit(token)
+            if event.get("action_request_id") == request_id
+        ]
         if not matching:
             raise VerificationError(f"Audit history did not contain operation request {request_id}")
         if matching[0].get("outcome") != "succeeded":
@@ -353,22 +365,25 @@ class WilsonLabVerifier:
                 if "restart" in resource["allowed_actions"]:
                     return {"id": resource["id"], "name": resource["name"], "action": "restart"}
         for resource in inventory:
-            actions = resource["allowed_actions"]
-            if actions:
-                return {"id": resource["id"], "name": resource["name"], "action": actions[0]}
+            if resource["allowed_actions"]:
+                return {
+                    "id": resource["id"],
+                    "name": resource["name"],
+                    "action": resource["allowed_actions"][0],
+                }
         raise VerificationError("No managed resource currently exposes an allowed operation")
 
     def _login(self, username: str, password: str) -> HttpResult:
-        form = urllib.parse.urlencode({"username": username, "password": password}).encode("utf-8")
+        body = urllib.parse.urlencode({"username": username, "password": password}).encode("utf-8")
         return self._request(
             "POST",
             "/api/v1/auth/token",
-            body=form,
+            body=body,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
 
     @staticmethod
-    def _expect_token(response: HttpResult) -> str:
+    def _expect_token(response: HttpResult) -> SecretToken:
         WilsonLabVerifier._expect_status(response, 200)
         payload = WilsonLabVerifier._expect_object(response.payload, "login response")
         token = payload.get("access_token")
@@ -376,7 +391,7 @@ class WilsonLabVerifier:
             raise VerificationError("Login response did not include a plausible access token")
         if payload.get("token_type") != "bearer":
             raise VerificationError("Login response token_type was not bearer")
-        return token
+        return SecretToken(token)
 
     def _request(
         self,
@@ -397,7 +412,10 @@ class WilsonLabVerifier:
             body = json.dumps(json_body).encode("utf-8")
             request_headers["Content-Type"] = "application/json"
         request = urllib.request.Request(
-            f"{self.base_url}{path}", data=body, headers=request_headers, method=method
+            f"{self.base_url}{path}",
+            data=body,
+            headers=request_headers,
+            method=method,
         )
         try:
             with urllib.request.urlopen(request, timeout=self.timeout, context=self.context) as response:
@@ -410,9 +428,8 @@ class WilsonLabVerifier:
     @staticmethod
     def _read_response(status: int, headers: Any, raw: bytes) -> HttpResult:
         normalized_headers = {key.lower(): value for key, value in headers.items()}
-        content_type = normalized_headers.get("content-type", "")
         text = raw.decode("utf-8", errors="replace")
-        if "application/json" in content_type and text:
+        if "application/json" in normalized_headers.get("content-type", "") and text:
             try:
                 payload: Any = json.loads(text)
             except json.JSONDecodeError as error:
