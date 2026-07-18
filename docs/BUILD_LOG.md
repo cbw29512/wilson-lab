@@ -185,7 +185,43 @@ Provider-neutral deployment and provider-specific provisioning belong in separat
 
 ---
 
-## M6 — Live cloud activation (external step)
+## M6 — Live deployment verification
+
+### What changed
+
+- Added a dependency-free Python verifier for deployed Wilson Lab APIs.
+- Added health, read-only, and full verification levels.
+- Added HTTPS-origin and exact-CORS checks.
+- Added invalid-login, Viewer identity, Administrator identity, inventory, and detail validation.
+- Added explicit checks that Viewer accounts receive 403 for operations and audit history.
+- Added explicit checks that unconfirmed Administrator operations receive 409.
+- Added an optional confirmed managed operation with matching audit-event verification.
+- Added a sanitized JSON evidence report.
+- Added an explicit bearer-token wrapper that redacts tokens from evidence.
+- Added regression tests proving passwords and bearer tokens do not appear in report serialization.
+- Added a manual GitHub Actions workflow for health, read-only, or full verification.
+- Added a daily health-only scheduled check that cannot change resource state.
+- Added a PowerShell-first live verification and evidence runbook.
+
+### Why
+
+Make the final public activation measurable and repeatable. A deployed dashboard is not sufficient evidence by itself; the live system must prove HTTPS, CORS, identity, RBAC, confirmation, managed-resource operations, and audit behavior without leaking credentials.
+
+### Verification
+
+- Python compilation succeeds for all verification tooling.
+- Standard-library unit tests exercise health, read-only, full-operation, CORS-failure, and evidence-redaction paths.
+- The command-line interface runs without third-party packages.
+- Workflow configuration separates scheduled health checks from manually authorized state-changing checks.
+- Pull request: `Build M6 live deployment verification`.
+
+### What I learned
+
+Operational evidence must be designed with the same care as the system being verified. A useful verification report proves behavior while intentionally excluding the secrets and tokens used to perform the checks.
+
+---
+
+## M7 — Live cloud activation (external step)
 
 Remaining work:
 
@@ -193,7 +229,8 @@ Remaining work:
 - apply the Resource Manager stack in the OCI home region
 - create the DNS `A` record from the Terraform public-IP output
 - wait for cloud-init and Caddy HTTPS activation
-- verify the Docker inventory and role behavior
+- add the generated Viewer and Administrator passwords as GitHub secrets
 - set the GitHub repository variable `VITE_API_ORIGIN`
+- run health, read-only, and full live verification
 - securely store demonstration credentials
 - capture final screenshots and a short demonstration recording
