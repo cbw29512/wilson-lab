@@ -54,7 +54,7 @@ def test_failed_login_limit_returns_retry_after(client: TestClient):
     assert int(blocked.headers["retry-after"]) >= 1
 
 
-def test_limiter_resets_and_expires_failures():
+def test_limiter_resets_expires_and_removes_buckets():
     now = [100.0]
     limiter = LoginRateLimiter(
         attempt_limit=2,
@@ -63,6 +63,9 @@ def test_limiter_resets_and_expires_failures():
     )
     key = limiter.key("203.0.113.5", "Viewer")
 
+    assert limiter.check(key).allowed is True
+    assert limiter._failures == {}
+
     assert limiter.register_failure(key).allowed is True
     blocked = limiter.register_failure(key)
     assert blocked.allowed is False
@@ -70,7 +73,9 @@ def test_limiter_resets_and_expires_failures():
 
     limiter.reset(key)
     assert limiter.check(key).allowed is True
+    assert limiter._failures == {}
 
     limiter.register_failure(key)
     now[0] = 111.0
     assert limiter.check(key).allowed is True
+    assert limiter._failures == {}
