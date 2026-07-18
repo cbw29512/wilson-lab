@@ -221,7 +221,70 @@ Operational evidence must be designed with the same care as the system being ver
 
 ---
 
-## M7 — Live cloud activation (external step)
+## M7 — Recruiter-readable evidence
+
+### What changed
+
+- Added a second-stage evidence renderer for sanitized verification JSON.
+- Added recruiter-readable Markdown proof bundles.
+- Added rejection of credential-like keys, JWT-shaped strings, and unredacted bearer values.
+- Added tests for malformed reports and sensitive-data rejection.
+- Updated the live workflow to package JSON and Markdown together.
+- Replaced the interview script with a timed, proof-driven three-minute demonstration and outage fallback.
+
+### Why
+
+Convert technical test output into evidence that a recruiter or interviewer can understand without exposing the credentials or cloud details used to perform the checks.
+
+### Verification
+
+- Verification and evidence-renderer tests pass.
+- Both command-line interfaces compile and display help successfully.
+- The production frontend build remains green.
+- Pull request: `Package recruiter-readable verification evidence`.
+
+### What I learned
+
+Security evidence needs two audiences: machines need structured results, while people need a concise explanation of what passed and why it matters. Both formats must share the same redaction boundary.
+
+---
+
+## M8 — API and repository hardening
+
+### What changed
+
+- Added failed-login throttling keyed by client IP and normalized username.
+- Added configurable attempt and time-window limits with `Retry-After` responses.
+- Added generated request IDs and no-store API caching.
+- Added separate liveness and database/runtime readiness endpoints.
+- Disabled interactive API documentation in production.
+- Split authentication, system, and resource routes into focused modules.
+- Changed Caddy and Docker health checks to use readiness rather than liveness.
+- Added a restrictive API Content Security Policy.
+- Added hardening tests for readiness, throttling, request IDs, response headers, and configuration validation.
+- Added weekly and change-triggered frontend/backend dependency audits.
+- Added a root security policy, contribution guide, pull-request template, and structured issue forms.
+
+### Why
+
+Strengthen the service boundary that exists before authorization, improve production troubleshooting, and make the public repository communicate mature security and contribution expectations.
+
+### Verification
+
+- Backend compilation and all tests pass.
+- Frontend tests, TypeScript, and production build pass.
+- Compose and Caddy configuration validation pass.
+- The hardened API image builds and remains non-root.
+- Frontend and backend dependency audits pass and retain audit evidence.
+- Pull request: `Harden M8 API and repository security`.
+
+### What I learned
+
+A secure control plane needs protection before authentication as well as after it. Rate limits, readiness, request correlation, dependency checks, and responsible disclosure are part of the product—not repository decoration.
+
+---
+
+## M9 — Live cloud activation (external step)
 
 Remaining work:
 
