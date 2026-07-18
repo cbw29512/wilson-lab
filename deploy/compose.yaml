@@ -35,6 +35,8 @@ services:
       WILSON_LAB_DATABASE_URL: sqlite:////data/wilson_lab.db
       WILSON_LAB_JWT_SECRET_FILE: /run/secrets/jwt_secret
       WILSON_LAB_ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-30}
+      WILSON_LAB_LOGIN_ATTEMPT_LIMIT: ${LOGIN_ATTEMPT_LIMIT:-5}
+      WILSON_LAB_LOGIN_WINDOW_SECONDS: ${LOGIN_WINDOW_SECONDS:-60}
       WILSON_LAB_RUNTIME_MODE: docker
       WILSON_LAB_CORS_ORIGINS: '["https://cbw29512.github.io"]'
       WILSON_LAB_MANAGED_LABEL: wilson-lab.managed=true
@@ -74,7 +76,7 @@ services:
         - CMD
         - python
         - -c
-        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8055/health', timeout=3)"
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8055/ready', timeout=3)"
       interval: 20s
       timeout: 5s
       retries: 5

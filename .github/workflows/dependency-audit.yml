@@ -1,0 +1,105 @@
+name: Dependency Audit
+
+on:
+  pull_request:
+    paths:
+      - "backend/pyproject.toml"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - ".github/workflows/dependency-audit.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/pyproject.toml"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - ".github/workflows/dependency-audit.yml"
+  schedule:
+    - cron: "43 13 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install audit tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+
+      - name: Derive backend requirements from pyproject
+        run: |
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          project = tomllib.loads(Path("backend/pyproject.toml").read_text(encoding="utf-8"))
+          dependencies = project["project"]["dependencies"]
+          Path("backend-audit-requirements.txt").write_text(
+              "\n".join(dependencies) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Audit third-party backend dependencies
+        id: backend_audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          pip-audit --requirement backend-audit-requirements.txt --strict --format json \
+            > backend-audit.json 2> backend-audit.stderr
+
+      - name: Upload backend audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dependency-audit
+          path: |
+            backend-audit-requirements.txt
+            backend-audit.json
+            backend-audit.stderr
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce backend audit result
+        if: steps.backend_audit.outcome != 'success'
+        run: |
+          echo "::error::Backend dependency audit failed or found one or more advisories."
+          cat backend-audit.stderr || true
+          exit 1
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Audit production frontend dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high

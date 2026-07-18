@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "wilson-lab-api"
-version = "0.2.0"
+version = "0.8.0"
 description = "Secure control-plane API for the Wilson Lab showcase."
 requires-python = ">=3.12"
 dependencies = [

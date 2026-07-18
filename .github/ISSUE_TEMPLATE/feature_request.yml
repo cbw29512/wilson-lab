@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose a focused improvement to Wilson Lab
+title: "Feature: "
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Explain the user, operational, or security problem before proposing implementation details.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the smallest observable result that would solve the problem.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Product area
+      options:
+        - Inventory and resource details
+        - Authentication and authorization
+        - Safe resource operations
+        - Audit evidence
+        - Cloud deployment
+        - Verification and recruiter evidence
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Security and scope boundary
+      description: Explain what this feature must never expose or broaden.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Acceptance evidence
+      description: List the tests, screenshots, API responses, or documentation that would prove completion.

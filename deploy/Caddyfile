@@ -7,11 +7,12 @@
     X-Frame-Options "DENY"
     Referrer-Policy "no-referrer"
     Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
     Strict-Transport-Security "max-age=31536000; includeSubDomains"
   }
 
   reverse_proxy api:8055 {
-    health_uri /health
+    health_uri /ready
     health_interval 30s
     health_timeout 5s
   }

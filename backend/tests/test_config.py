@@ -56,3 +56,12 @@ def test_production_rejects_duplicate_demo_passwords(tmp_path: Path):
 def test_empty_secret_file_is_rejected(tmp_path: Path):
     with pytest.raises(ValidationError, match="JWT secret file is empty"):
         Settings(_env_file=None, jwt_secret_file=write_secret(tmp_path / "jwt", "\n"))
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["access_token_minutes", "login_attempt_limit", "login_window_seconds"],
+)
+def test_security_limits_must_be_positive(field: str):
+    with pytest.raises(ValidationError, match="must be positive"):
+        Settings(_env_file=None, **{field: 0})
