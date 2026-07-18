@@ -80,11 +80,18 @@ jobs:
             --level "$VERIFY_LEVEL" \
             --report artifacts/live-verification-report.json
 
-      - name: Upload sanitized verification evidence
+      - name: Render recruiter-readable evidence
+        if: ${{ always() && hashFiles('artifacts/live-verification-report.json') != '' }}
+        run: |
+          python tools/render_evidence.py \
+            artifacts/live-verification-report.json \
+            --output artifacts/live-verification-evidence.md
+
+      - name: Upload sanitized proof bundle
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: live-verification-${{ github.run_number }}
-          path: artifacts/live-verification-report.json
+          path: artifacts/
           if-no-files-found: warn
           retention-days: 30
