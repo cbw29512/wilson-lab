@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass
 from math import ceil
 from threading import Lock
@@ -29,7 +29,7 @@ class LoginRateLimiter:
         self.attempt_limit = attempt_limit
         self.window_seconds = window_seconds
         self._clock = clock
-        self._failures: dict[str, deque[float]] = defaultdict(deque)
+        self._failures: dict[str, deque[float]] = {}
         self._lock = Lock()
 
     @staticmethod
@@ -38,15 +38,20 @@ class LoginRateLimiter:
 
     def check(self, key: str) -> RateLimitDecision:
         with self._lock:
+            failures = self._failures.get(key)
+            if failures is None:
+                return RateLimitDecision(allowed=True)
             now = self._clock()
-            failures = self._failures[key]
             self._prune(failures, now)
+            if not failures:
+                self._failures.pop(key, None)
+                return RateLimitDecision(allowed=True)
             return self._decision(failures, now)
 
     def register_failure(self, key: str) -> RateLimitDecision:
         with self._lock:
             now = self._clock()
-            failures = self._failures[key]
+            failures = self._failures.setdefault(key, deque())
             self._prune(failures, now)
             failures.append(now)
             return self._decision(failures, now)
