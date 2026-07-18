@@ -43,7 +43,24 @@ jobs:
           pip install -e . pip-audit
 
       - name: Audit installed backend dependencies
-        run: pip-audit --local --strict
+        id: backend_audit
+        continue-on-error: true
+        run: pip-audit --local --strict --format json --output backend-audit.json
+
+      - name: Upload backend audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dependency-audit
+          path: backend-audit.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce backend audit result
+        if: steps.backend_audit.outcome != 'success'
+        run: |
+          echo "::error::Backend dependency audit found one or more advisories."
+          exit 1
 
   frontend:
     runs-on: ubuntu-latest
