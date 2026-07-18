@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = DEFAULT_ADMIN_PASSWORD
     admin_password_file: str | None = None
+    login_attempt_limit: int = 5
+    login_window_seconds: int = 60
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -42,6 +44,13 @@ class Settings(BaseSettings):
         if normalized not in {"mock", "docker"}:
             raise ValueError("runtime_mode must be 'mock' or 'docker'")
         return normalized
+
+    @field_validator("access_token_minutes", "login_attempt_limit", "login_window_seconds")
+    @classmethod
+    def validate_positive_integer(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("security timing and limit values must be positive")
+        return value
 
     @model_validator(mode="after")
     def resolve_and_validate_secrets(self):
