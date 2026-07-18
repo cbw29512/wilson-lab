@@ -12,6 +12,9 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 - FastAPI control-plane API integration
 - Signed JWT authentication with session-scoped browser storage
 - Viewer and Administrator roles
+- Failed-login throttling with `Retry-After`
+- Request IDs and non-cacheable API responses
+- Separate liveness and database/runtime readiness checks
 - Role-aware resource controls and details
 - Explicit confirmation before state-changing operations
 - Allowlisted start, stop, and restart actions
@@ -22,8 +25,8 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 - File-backed production secrets
 - Backup and integrity-checked restore workflows
 - Terraform-managed Oracle Cloud network and compute resources
-- Credential-safe live deployment verification
-- Automated frontend, backend, deployment, infrastructure, and verification CI
+- Credential-safe live deployment verification and recruiter evidence
+- Automated frontend, backend, deployment, infrastructure, verification, and dependency-audit CI
 
 ## Current milestone
 
@@ -35,8 +38,10 @@ A security-conscious infrastructure control-plane showcase built to demonstrate 
 | M3 — Frontend/API integration | Complete | Login, live-data state, role-aware controls, confirmation, details, audit panel |
 | M4 — Cloud deployment bundle | Complete | Caddy HTTPS, hardened Compose stack, secrets, backups, preflight, deployment CI |
 | M5 — OCI infrastructure as code | Complete | VCN, firewall, A1 VM, Ubuntu image selection, cloud-init, Resource Manager runbook |
-| M6 — Live verification tooling | Complete in PR #5 | Health, RBAC, confirmation, operation, audit, redaction tests, scheduled monitoring |
-| M7 — Live activation | External step | Activate OCI account, apply stack, create DNS record, connect Pages to API |
+| M6 — Live verification tooling | Complete in PR #6 | Health, RBAC, confirmation, operation, audit, redaction tests, scheduled monitoring |
+| M7 — Recruiter evidence | Complete in PR #7 | Sanitized JSON, validated Markdown proof bundle, three-minute demo script |
+| M8 — API and repository hardening | Complete in PR #8 | Login throttling, readiness, request IDs, dependency audits, security contribution policy |
+| M9 — Live activation | External step | Activate OCI account, apply stack, create DNS record, connect Pages to API |
 
 ## Architecture
 
@@ -46,7 +51,7 @@ flowchart LR
     UI -->|JWT API requests| Proxy[Caddy\nAutomatic HTTPS]
     Proxy --> API[FastAPI control plane\nDedicated OCI VM]
     API --> DB[(SQLite audit volume)]
-    API --> Guard[RBAC + confirmation\nmanaged-label allowlist]
+    API --> Guard[RBAC + confirmation\nrate limit + label allowlist]
     Guard --> Runtime[Docker socket\nVM-local only]
     Runtime --> Containers[Isolated labeled\ndemo containers]
     IaC[Terraform / OCI Resource Manager] --> Cloud[VCN + subnet + firewall\nA1 Flex Ubuntu VM]
@@ -100,7 +105,7 @@ npm ci
 npm run dev
 ```
 
-The Vite development server proxies `/api` and `/health` to `http://127.0.0.1:8055`.
+The Vite development server proxies `/api`, `/health`, and `/ready` to `http://127.0.0.1:8055`.
 
 ## Cloud deployment
 
@@ -130,7 +135,7 @@ Actual activation still requires an OCI account and a DNS name controlled by the
 - `read-only`: authentication, inventory, resource details, Viewer restrictions, confirmation enforcement, and Administrator audit access
 - `full`: one confirmed managed operation plus matching audit evidence
 
-The scheduled GitHub Actions run is health-only and cannot change container state. Authenticated checks require repository secrets, and generated JSON evidence excludes passwords and bearer tokens.
+The scheduled GitHub Actions run is health-only and cannot change container state. Authenticated checks require repository secrets, and generated JSON and Markdown evidence exclude passwords and bearer tokens.
 
 See [`docs/LIVE_VERIFICATION.md`](docs/LIVE_VERIFICATION.md) for GitHub Actions and PowerShell procedures.
 
@@ -140,6 +145,7 @@ See [`docs/LIVE_VERIFICATION.md`](docs/LIVE_VERIFICATION.md) for GitHub Actions 
 cd frontend
 npm ci
 npm run check
+npm audit --omit=dev --audit-level=high
 
 cd ../backend
 pip install -e ".[test]"
@@ -155,24 +161,28 @@ python -m compileall -q tools
 python -m unittest discover -s tools/tests -v
 ```
 
-Deployment CI separately validates the Compose stack, Caddyfile, shell scripts, hardened API image, and non-root container identity.
+Deployment CI separately validates the Compose stack, Caddyfile, shell scripts, hardened API image, and non-root container identity. Dependency Audit runs on relevant pull requests, changes to `main`, manual dispatch, and a weekly schedule.
 
 ## Security model
 
 Wilson Lab is intentionally narrow:
 
+- Failed logins are limited by client IP and normalized username.
 - Viewer accounts can inspect inventory but cannot change state.
 - Administrator accounts can request only valid start, stop, or restart transitions.
 - Every state-changing request requires explicit confirmation.
 - Every success and failure produces an audit record.
 - Docker resources are checked against the management label before use.
 - Production startup rejects weak, default, duplicate, missing, or unreadable secrets.
+- Production disables interactive API documentation and OpenAPI discovery.
+- API responses receive generated request IDs, no-store caching, and defensive headers.
+- Caddy uses readiness checks and adds HTTPS security headers.
 - OCI security rules expose SSH only to a supplied `/32` and web traffic only on 80/443.
 - Live verification reports redact bearer tokens and never include configured passwords.
 - Scheduled monitoring performs no authenticated or state-changing requests.
-- The Docker-backed mode belongs on a dedicated cloud sandbox, never a home or production host.
+- The Docker-backed mode belongs on a dedicated cloud sandbox, never a home, employer, or production host.
 
-See [`docs/SECURITY.md`](docs/SECURITY.md), [`backend/README.md`](backend/README.md), [`deploy/README.md`](deploy/README.md), [`infra/oci/README.md`](infra/oci/README.md), and [`docs/LIVE_VERIFICATION.md`](docs/LIVE_VERIFICATION.md).
+Read [`SECURITY.md`](SECURITY.md) before reporting a vulnerability and [`CONTRIBUTING.md`](CONTRIBUTING.md) before proposing changes. Detailed controls are in [`docs/SECURITY.md`](docs/SECURITY.md), [`backend/README.md`](backend/README.md), [`deploy/README.md`](deploy/README.md), [`infra/oci/README.md`](infra/oci/README.md), and [`docs/LIVE_VERIFICATION.md`](docs/LIVE_VERIFICATION.md).
 
 ## Documentation
 
