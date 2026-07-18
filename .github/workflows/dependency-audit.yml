@@ -42,27 +42,31 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e . pip-audit
 
-      - name: Audit installed backend dependencies
+      - name: Audit third-party backend dependencies
         id: backend_audit
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          pip-audit --local --strict --format json > backend-audit.json
+          pip-audit --local --skip-editable --strict --format json \
+            > backend-audit.json 2> backend-audit.stderr
 
       - name: Upload backend audit evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-dependency-audit
-          path: backend-audit.json
+          path: |
+            backend-audit.json
+            backend-audit.stderr
           if-no-files-found: error
           retention-days: 30
 
       - name: Enforce backend audit result
         if: steps.backend_audit.outcome != 'success'
         run: |
-          echo "::error::Backend dependency audit found one or more advisories."
+          echo "::error::Backend dependency audit failed or found one or more advisories."
+          cat backend-audit.stderr || true
           exit 1
 
   frontend:
