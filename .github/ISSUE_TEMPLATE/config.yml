@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security report
+    url: mailto:divclass01@gmail.com?subject=Wilson%20Lab%20security%20report
+    about: Report vulnerabilities privately. Never include credentials or private infrastructure details in a public issue.
+  - name: Live dashboard
+    url: https://cbw29512.github.io/wilson-lab/
+    about: Confirm current public demo behavior before filing a non-security bug.
