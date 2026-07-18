@@ -11,7 +11,7 @@ def test_readiness_checks_database_and_runtime(client: TestClient):
         "status": "ready",
         "database": "ok",
         "runtime": "mock",
-        "managed_resources": 3,
+        "managed_resources": 2,
     }
 
 
